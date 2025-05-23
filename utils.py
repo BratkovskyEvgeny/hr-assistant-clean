@@ -671,30 +671,63 @@ def analyze_skills(job_description, resume_text):
             len(job_skills & resume_skills) / len(job_skills) if job_skills else 0.0
         )
 
-        # Отладочная информация
-        st.write("### Отладочная информация")
-        st.write("#### Навыки из вакансии:")
-        for skill in sorted(job_skills):
-            st.write(f"- {skill}")
-        st.write("#### Навыки из резюме:")
-        for skill in sorted(resume_skills):
-            st.write(f"- {skill}")
-        st.write(f"#### Схожесть навыков: {similarity:.2%}")
+        # Группируем навыки по категориям
+        missing_tech = {
+            skill
+            for skill in missing_skills
+            if skill
+            in {
+                "python",
+                "numpy",
+                "pandas",
+                "matplotlib",
+                "seaborn",
+                "plotly",
+                "docker",
+                "chromadb",
+                "langchain",
+                "llm",
+                "data",
+                "scientist",
+            }
+        }
+        missing_other = missing_skills - missing_tech
+
+        extra_tech = {
+            skill
+            for skill in extra_skills
+            if skill
+            in {
+                "python",
+                "numpy",
+                "pandas",
+                "matplotlib",
+                "seaborn",
+                "plotly",
+                "docker",
+                "chromadb",
+                "langchain",
+                "llm",
+                "data",
+                "scientist",
+            }
+        }
+        extra_other = extra_skills - extra_tech
 
         return {
-            "missing_skills": missing_skills,
-            "extra_skills": extra_skills,
+            "missing_tech": missing_tech,
+            "missing_other": missing_other,
+            "extra_tech": extra_tech,
+            "extra_other": extra_other,
             "similarity": similarity,
-            "job_skills": job_skills,
-            "resume_skills": resume_skills,
         }
 
     except Exception as e:
         st.error(f"Ошибка при анализе навыков: {str(e)}")
         return {
-            "missing_skills": set(),
-            "extra_skills": set(),
+            "missing_tech": set(),
+            "missing_other": set(),
+            "extra_tech": set(),
+            "extra_other": set(),
             "similarity": 0.0,
-            "job_skills": set(),
-            "resume_skills": set(),
         }
