@@ -1,3 +1,5 @@
+import base64
+
 import PyPDF2
 import requests
 import streamlit as st
@@ -224,11 +226,17 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подготавливаем данные для запроса
         payload = {
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "stop": None,
+            "input": {
+                "prompt": prompt,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
         }
+
+        # Формируем заголовки авторизации
+        auth = f"{username}:{key}"
+        auth_bytes = auth.encode("ascii")
+        base64_auth = base64.b64encode(auth_bytes).decode("ascii")
 
         # Отправляем запрос
         response = requests.post(
@@ -236,7 +244,7 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             json=payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Basic {username}:{key}",
+                "Authorization": f"Basic {base64_auth}",
             },
             timeout=30,
         )
@@ -244,8 +252,8 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         # Проверяем статус ответа
         if response.status_code == 200:
             result = response.json()
-            if "generated_text" in result:
-                return result["generated_text"]
+            if "output" in result and "text" in result["output"]:
+                return result["output"]["text"]
             else:
                 raise Exception(f"Неверный формат ответа от API: {result}")
         else:
