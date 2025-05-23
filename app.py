@@ -280,34 +280,16 @@ if uploaded_file and job_description:
         try:
             # Формируем промпт для генерации рекомендаций
             prompt = f"""
-            На основе анализа резюме и описания вакансии, предоставь структурированные рекомендации по улучшению резюме.
-            
-            Описание вакансии:
+            Проанализируй резюме и вакансию, дай краткие рекомендации.
+
+            Вакансия:
             {job_description}
-            
+
             Анализ навыков:
-            1. Отсутствующие технические навыки:
-               {', '.join(skills_analysis['missing_tech']) if skills_analysis['missing_tech'] else 'Нет'}
-            
-            2. Отсутствующие общие навыки:
-               {', '.join(skills_analysis['missing_other']) if skills_analysis['missing_other'] else 'Нет'}
-            
-            3. Дополнительные технические навыки:
-               {', '.join(skills_analysis['extra_tech']) if skills_analysis['extra_tech'] else 'Нет'}
-            
-            4. Дополнительные общие навыки:
-               {', '.join(skills_analysis['extra_other']) if skills_analysis['extra_other'] else 'Нет'}
-            
-            Предоставь рекомендации в следующем формате:
-            
-            1. Сильные стороны:
-               - Перечисли 3-4 ключевых преимущества кандидата
-            
-            2. Области для развития:
-               - Укажи 2-3 навыка, которые стоит развить в первую очередь
-            
-            3. Рекомендации по улучшению резюме:
-               - Дай 3-4 конкретных совета по структуре и содержанию
+            - Отсутствуют: {', '.join(skills_analysis['missing_tech'] | skills_analysis['missing_other'])}
+            - Есть дополнительно: {', '.join(skills_analysis['extra_tech'] | skills_analysis['extra_other'])}
+
+            Дай 3-4 конкретных рекомендации по улучшению резюме.
             """
 
             with st.spinner("Генерируем рекомендации..."):
