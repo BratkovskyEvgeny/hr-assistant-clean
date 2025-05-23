@@ -4,14 +4,13 @@ import re
 import nltk
 import numpy as np
 import PyPDF2
-import requests
 import streamlit as st
 from docx import Document
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import logging
+from transformers import logging, pipeline
 
 # Отключаем предупреждения transformers
 logging.set_verbosity_error()
@@ -27,6 +26,24 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 
 # Инициализация модели для многоязычного анализа
 model = None
+
+
+# Инициализация LLM pipeline
+@st.cache_resource
+def get_llm_pipeline():
+    """Получает LLM pipeline с кэшированием"""
+    try:
+        with st.spinner("Загрузка LLM модели..."):
+            return pipeline(
+                "text-generation",
+                model="mistralai/Mistral-7B-Instruct-v0.3",
+                device_map="auto",
+                torch_dtype="auto",
+            )
+    except Exception as e:
+        st.error(f"Ошибка при загрузке LLM модели: {str(e)}")
+        return None
+
 
 API_URL = "https://api-inference.huggingface.co/models/gpt2-medium"
 headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
@@ -572,52 +589,32 @@ def get_detailed_analysis(job_description, resume_text):
 def query_llm(prompt):
     """Отправляет запрос к LLM модели"""
     try:
-        # Проверяем доступность модели
-        health_check = requests.get(API_URL, headers=headers)
-        if health_check.status_code != 200:
-            st.error(f"Модель недоступна: {health_check.status_code}")
-            return "Модель временно недоступна. Пожалуйста, попробуйте позже."
+        pipe = get_llm_pipeline()
+        if pipe is None:
+            return "Не удалось загрузить LLM модель. Пожалуйста, попробуйте позже."
 
-        # Добавляем префикс для лучшего форматирования ответа
-        formatted_prompt = f"""HR Analysis:
+        # Форматируем промпт для Mistral
+        formatted_prompt = f"""<s>[INST] Ты — HR-ассистент. Проанализируй следующую информацию:
+
 {prompt}
 
-Analysis:"""
+Ответь структурировано. [/INST]</s>"""
 
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json={
-                "inputs": formatted_prompt,
-                "parameters": {
-                    "max_new_tokens": 300,
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "return_full_text": False,
-                    "do_sample": True,
-                },
-            },
-            timeout=30,  # Добавляем таймаут
+        # Генерируем ответ
+        response = pipe(
+            formatted_prompt,
+            max_new_tokens=300,
+            temperature=0.7,
+            top_p=0.95,
+            do_sample=True,
+            pad_token_id=pipe.tokenizer.eos_token_id,
         )
 
-        if response.status_code == 200:
-            result = response.json()[0]["generated_text"]
-            # Очищаем результат от префикса
-            result = result.replace(formatted_prompt, "").strip()
-            return result
-        elif response.status_code == 503:
-            st.warning(
-                "Модель загружается, пожалуйста, подождите немного и попробуйте снова"
-            )
-            return (
-                "Модель загружается, пожалуйста, подождите немного и попробуйте снова"
-            )
-        else:
-            st.error(f"Ошибка API: {response.status_code} — {response.text}")
-            return "Не удалось получить анализ от LLM. Пожалуйста, попробуйте позже."
-    except requests.exceptions.Timeout:
-        st.error("Превышено время ожидания ответа от API")
-        return "Превышено время ожидания ответа от API. Пожалуйста, попробуйте позже."
+        # Извлекаем и очищаем результат
+        result = response[0]["generated_text"]
+        result = result.replace(formatted_prompt, "").strip()
+        return result
+
     except Exception as e:
         st.error(f"Ошибка при обращении к LLM: {str(e)}")
         return "Произошла ошибка при анализе. Пожалуйста, попробуйте позже."
