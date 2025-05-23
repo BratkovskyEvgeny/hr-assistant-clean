@@ -3,7 +3,7 @@ import streamlit as st
 
 # Настройка страницы
 st.set_page_config(
-    page_title="HR Assistant - Оценка резюме",
+    page_title="🤖 HR Assistant",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="collapsed",
