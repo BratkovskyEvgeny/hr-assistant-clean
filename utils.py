@@ -13,7 +13,9 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 model = None
 
 # API URL для Hugging Face
-API_URL = "https://api-inference.huggingface.co/models/distilgpt2"
+API_URL = (
+    "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+)
 HEADERS = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
@@ -642,15 +644,43 @@ def extract_text_from_file(file):
 def query_llm(prompt):
     """Отправляет запрос к LLM через Hugging Face API"""
     try:
+        if not os.environ.get("HF_TOKEN"):
+            st.warning(
+                "⚠️ Не установлен токен Hugging Face. Пожалуйста, установите переменную окружения HF_TOKEN"
+            )
+            return (
+                "Для использования LLM-анализа необходимо установить токен Hugging Face"
+            )
+
         response = requests.post(
             API_URL,
             headers=HEADERS,
-            json={"inputs": prompt, "parameters": {"return_full_text": False}},
+            json={
+                "inputs": f"<s>[INST] {prompt} [/INST]",
+                "parameters": {
+                    "max_new_tokens": 500,
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "return_full_text": False,
+                },
+            },
+            timeout=30,
         )
+
+        if response.status_code == 404:
+            st.error("❌ Модель не найдена. Пожалуйста, проверьте URL модели")
+            return "Не удалось получить ответ от модели"
+
         response.raise_for_status()
         return response.json()[0]["generated_text"]
+    except requests.exceptions.Timeout:
+        st.error("⏰ Превышено время ожидания ответа от модели")
+        return "Не удалось получить ответ от модели"
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Ошибка при запросе к LLM: {str(e)}")
+        return "Не удалось получить ответ от модели"
     except Exception as e:
-        st.error(f"Ошибка при запросе к LLM: {str(e)}")
+        st.error(f"❌ Неожиданная ошибка: {str(e)}")
         return "Не удалось получить ответ от модели"
 
 
