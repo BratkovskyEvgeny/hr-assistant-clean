@@ -1,8 +1,17 @@
+import base64
+import json
+
+import requests
 import streamlit as st
 
-from utils import analyze_skills, extract_text_from_file, generate_text
+from src.utils import analyze_skills, extract_text_from_file
 
-st.set_page_config(page_title="🤖 HR Assistant", page_icon="🤖", layout="wide")
+st.set_page_config(
+    page_title="HR Assistant",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # Стили для красивого отображения
 st.markdown(
@@ -196,105 +205,239 @@ st.markdown(
 
 # Заголовок приложения
 st.title("🤖 HR Assistant")
-st.markdown("### Анализ резюме и рекомендации")
+st.markdown("""
+Этот инструмент поможет вам:
+- Проанализировать соответствие навыков кандидата требованиям вакансии
+- Сгенерировать рекомендации по улучшению резюме
+- Получить советы по подготовке к собеседованию
+""")
 
-# Боковая панель с инструкциями
-with st.sidebar:
-    st.markdown("### 📝 Инструкции")
-    st.markdown("""
-    1. Введите описание вакансии
-    2. Загрузите резюме (PDF или DOCX)
-    3. Нажмите кнопку "Анализировать"
-    4. Получите результаты анализа и рекомендации
-    """)
+# Создаем две колонки
+col1, col2 = st.columns(2)
 
-# Основной контент
-job_description = st.text_area(
-    "Описание вакансии",
-    height=200,
-    placeholder="Введите описание вакансии здесь...",
-)
+with col1:
+    st.subheader("📝 Описание вакансии")
+    job_description = st.text_area(
+        "Введите описание вакансии",
+        height=300,
+        placeholder="Вставьте сюда текст описания вакансии...",
+    )
 
-uploaded_file = st.file_uploader(
-    "Загрузите резюме",
-    type=["pdf", "docx"],
-    help="Поддерживаются файлы PDF и DOCX",
-)
+with col2:
+    st.subheader("📄 Резюме кандидата")
+    resume_file = st.file_uploader(
+        "Загрузите резюме (PDF или DOCX)", type=["pdf", "docx"]
+    )
 
-if uploaded_file and job_description:
-    # Извлекаем текст из резюме
-    resume_text = extract_text_from_file(uploaded_file)
+    if resume_file:
+        resume_text = extract_text_from_file(resume_file)
+        st.text_area("Текст резюме", value=resume_text, height=300, disabled=True)
+    else:
+        resume_text = ""
 
-    if resume_text:
-        # Анализируем навыки
-        skills_analysis = analyze_skills(job_description, resume_text)
+# Создаем секцию для логов
+st.markdown("### Логи API запроса")
+log_container = st.empty()
+
+# Кнопка анализа
+if st.button("🔍 Анализировать", type="primary"):
+    if not job_description or not resume_text:
+        st.error("Пожалуйста, заполните все поля")
+    else:
+        # Анализ навыков
+        analysis = analyze_skills(job_description, resume_text)
 
         # Отображаем результаты анализа
-        st.markdown("### 📊 Результаты анализа")
+        st.subheader("📊 Результаты анализа")
 
-        # Метрики
-        col1, col2, col3 = st.columns(3)
+        # Создаем три колонки для метрик
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+
+        with metric_col1:
+            st.metric("Схожесть навыков", f"{analysis['similarity']:.1%}")
+
+        with metric_col2:
+            st.metric(
+                "Отсутствующие навыки",
+                len(analysis["missing_tech"] | analysis["missing_other"]),
+            )
+
+        with metric_col3:
+            st.metric(
+                "Лишние навыки", len(analysis["extra_tech"] | analysis["extra_other"])
+            )
+
+        # Отображаем детали анализа
+        col1, col2 = st.columns(2)
+
         with col1:
-            st.metric("Соответствие навыков", f"{skills_analysis['similarity']:.0%}")
+            st.markdown("#### 🚫 Отсутствующие навыки")
+            if analysis["missing_tech"]:
+                st.markdown("**Технические навыки:**")
+                for skill in sorted(analysis["missing_tech"]):
+                    st.markdown(f"- {skill}")
+            if analysis["missing_other"]:
+                st.markdown("**Другие навыки:**")
+                for skill in sorted(analysis["missing_other"]):
+                    st.markdown(f"- {skill}")
+
         with col2:
-            st.metric("Отсутствующие навыки", len(skills_analysis["missing_tech"]))
-        with col3:
-            st.metric("Дополнительные навыки", len(skills_analysis["extra_tech"]))
-
-        # Детальный анализ
-        st.markdown("#### 🔍 Детальный анализ")
-
-        # Отсутствующие навыки
-        if skills_analysis["missing_tech"]:
-            st.markdown("##### ❌ Отсутствующие технические навыки")
-            for skill in skills_analysis["missing_tech"]:
-                st.markdown(
-                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
-                )
-
-        if skills_analysis["missing_other"]:
-            st.markdown("##### ❌ Отсутствующие другие навыки")
-            for skill in skills_analysis["missing_other"]:
-                st.markdown(
-                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
-                )
-
-        # Дополнительные навыки
-        if skills_analysis["extra_tech"]:
-            st.markdown("##### ✅ Дополнительные технические навыки")
-            for skill in skills_analysis["extra_tech"]:
-                st.markdown(
-                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
-                )
-
-        if skills_analysis["extra_other"]:
-            st.markdown("##### ✅ Дополнительные другие навыки")
-            for skill in skills_analysis["extra_other"]:
-                st.markdown(
-                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
-                )
+            st.markdown("#### ✅ Лишние навыки")
+            if analysis["extra_tech"]:
+                st.markdown("**Технические навыки:**")
+                for skill in sorted(analysis["extra_tech"]):
+                    st.markdown(f"- {skill}")
+            if analysis["extra_other"]:
+                st.markdown("**Другие навыки:**")
+                for skill in sorted(analysis["extra_other"]):
+                    st.markdown(f"- {skill}")
 
         # Генерация рекомендаций
-        st.markdown("### 💡 Рекомендации")
+        st.subheader("💡 Рекомендации")
+
+        # Подготавливаем данные для запроса
+        prompt = f"""
+        Проанализируй резюме кандидата и описание вакансии.
+        
+        Описание вакансии:
+        {job_description}
+        
+        Резюме кандидата:
+        {resume_text}
+        
+        Отсутствующие навыки:
+        {', '.join(analysis['missing_tech'] | analysis['missing_other'])}
+        
+        Лишние навыки:
+        {', '.join(analysis['extra_tech'] | analysis['extra_other'])}
+        
+        Предоставь рекомендации по улучшению резюме и подготовке к собеседованию.
+        """
 
         try:
-            # Формируем промпт для генерации рекомендаций
-            missing = list(
-                skills_analysis["missing_tech"] | skills_analysis["missing_other"]
+            # Получаем URL и учетные данные из конфигурации
+            api_url = st.secrets["api"]["kaggle_url"]
+            username = st.secrets["kaggle"]["username"]
+            key = st.secrets["kaggle"]["key"]
+
+            # Подготавливаем данные для запроса
+            payload = {
+                "input": {"prompt": prompt, "max_tokens": 1000, "temperature": 0.7}
+            }
+
+            # Формируем заголовки авторизации
+            auth = f"{username}:{key}"
+            auth_bytes = auth.encode("ascii")
+            base64_auth = base64.b64encode(auth_bytes).decode("ascii")
+
+            # Логируем детали запроса
+            log_text = []
+            log_text.append("=== ДЕТАЛИ ЗАПРОСА ===")
+            log_text.append(f"URL запроса: {api_url}")
+            log_text.append(
+                f"Payload запроса: {json.dumps(payload, indent=2, ensure_ascii=False)}"
             )
-            extra = list(skills_analysis["extra_tech"] | skills_analysis["extra_other"])
 
-            prompt = f"""
-            Дай 3 рекомендации по улучшению резюме.
-            Отсутствуют: {', '.join(missing) if missing else 'нет'}
-            Есть дополнительно: {', '.join(extra) if extra else 'нет'}
-            """
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Basic {base64_auth}",
+                "Accept": "application/json",
+            }
+            log_text.append(
+                f"Заголовки запроса: {json.dumps({k: v if k != 'Authorization' else '***' for k, v in headers.items()}, indent=2)}"
+            )
 
-            with st.spinner("Генерируем рекомендации..."):
-                recommendations = generate_text(prompt)
-                st.markdown(recommendations)
+            # Обновляем контейнер с логами
+            log_container.code("\n".join(log_text), language="text")
+
+            # Отправляем запрос
+            try:
+                log_text.append("Отправка запроса...")
+                log_container.code("\n".join(log_text), language="text")
+
+                response = requests.post(
+                    api_url, json=payload, headers=headers, timeout=30, verify=True
+                )
+                log_text.append("Запрос отправлен успешно")
+                log_container.code("\n".join(log_text), language="text")
+            except requests.exceptions.SSLError as e:
+                log_text.append(f"Ошибка SSL: {str(e)}")
+                log_container.code("\n".join(log_text), language="text")
+                raise Exception("Ошибка SSL при подключении к API")
+            except requests.exceptions.ConnectionError as e:
+                log_text.append(f"Ошибка подключения: {str(e)}")
+                log_container.code("\n".join(log_text), language="text")
+                raise Exception("Не удалось подключиться к API")
+            except requests.exceptions.Timeout as e:
+                log_text.append(f"Таймаут: {str(e)}")
+                log_container.code("\n".join(log_text), language="text")
+                raise Exception("Превышено время ожидания ответа от API")
+
+            # Логируем детали ответа
+            log_text.append("=== ДЕТАЛИ ОТВЕТА ===")
+            log_text.append(f"Статус код: {response.status_code}")
+            log_text.append(
+                f"Заголовки ответа: {json.dumps(dict(response.headers), indent=2)}"
+            )
+
+            try:
+                response_json = response.json()
+                log_text.append(
+                    f"Тело ответа: {json.dumps(response_json, indent=2, ensure_ascii=False)}"
+                )
+            except:
+                log_text.append(f"Тело ответа: {response.text}")
+
+            # Обновляем контейнер с логами
+            log_container.code("\n".join(log_text), language="text")
+
+            # Проверяем статус ответа
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    if "output" in result and "text" in result["output"]:
+                        recommendations = result["output"]["text"]
+                    elif "generated_text" in result:
+                        recommendations = result["generated_text"]
+                    elif "text" in result:
+                        recommendations = result["text"]
+                    else:
+                        error_msg = result.get("message", "Неизвестная ошибка")
+                        log_text.append(f"Неожиданный формат ответа: {result}")
+                        log_container.code("\n".join(log_text), language="text")
+                        raise Exception(f"Ошибка в ответе API: {error_msg}")
+                except json.JSONDecodeError as e:
+                    log_text.append(f"Ошибка при разборе JSON: {str(e)}")
+                    log_text.append(f"Полученный текст: {response.text}")
+                    log_container.code("\n".join(log_text), language="text")
+                    raise Exception("Неверный формат ответа от API")
+            else:
+                error_msg = f"Ошибка API: {response.status_code}"
+                try:
+                    error_details = response.json()
+                    error_msg += f" - {error_details}"
+                except:
+                    error_msg += f" - {response.text}"
+                log_text.append(f"Ошибка API: {error_msg}")
+                log_container.code("\n".join(log_text), language="text")
+                raise Exception(error_msg)
+
+            # Отображаем рекомендации
+            st.markdown(recommendations)
 
         except Exception as e:
             st.error(f"Ошибка при генерации рекомендаций: {str(e)}")
-    else:
-        st.error("Не удалось извлечь текст из файла")
+            log_text.append(f"Ошибка при генерации текста: {str(e)}")
+            log_container.code("\n".join(log_text), language="text")
+
+# Футер
+st.markdown("---")
+st.markdown(
+    """
+<div style='text-align: center'>
+    <p>Создано с ❤️ для HR-специалистов</p>
+    <p>Версия 1.0.0</p>
+</div>
+""",
+    unsafe_allow_html=True,
+)
