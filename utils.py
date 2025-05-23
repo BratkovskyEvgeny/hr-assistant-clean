@@ -21,6 +21,8 @@ try:
     nltk.data.find("tokenizers/punkt")
 except LookupError:
     nltk.download("punkt", quiet=True)
+    nltk.download("averaged_perceptron_tagger", quiet=True)
+    nltk.download("wordnet", quiet=True)
 
 # Путь для кэширования модели
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
@@ -463,52 +465,56 @@ def extract_responsibilities(text):
 
 def extract_stack_from_text(text):
     """Извлекает стек технологий из текста"""
-    # Разбиваем текст на предложения
-    sentences = sent_tokenize(text.lower())
+    try:
+        # Разбиваем текст на предложения
+        sentences = sent_tokenize(text.lower())
 
-    # Ищем упоминания стека
-    stack_indicators = [
-        "стек",
-        "stack",
-        "технологии",
-        "technologies",
-        "инструменты",
-        "tools",
-        "используем",
-        "используем:",
-        "используем:",
-        "используем:",
-        "работаем с",
-        "работаем с:",
-        "работаем с:",
-        "работаем с:",
-        "требования",
-        "requirements",
-        "требования:",
-        "requirements:",
-        "навыки",
-        "skills",
-        "навыки:",
-        "skills:",
-    ]
+        # Ищем упоминания стека
+        stack_indicators = [
+            "стек",
+            "stack",
+            "технологии",
+            "technologies",
+            "инструменты",
+            "tools",
+            "используем",
+            "используем:",
+            "используем:",
+            "используем:",
+            "работаем с",
+            "работаем с:",
+            "работаем с:",
+            "работаем с:",
+            "требования",
+            "requirements",
+            "требования:",
+            "requirements:",
+            "навыки",
+            "skills",
+            "навыки:",
+            "skills:",
+        ]
 
-    stack_sentences = []
-    for sentence in sentences:
-        if any(indicator in sentence for indicator in stack_indicators):
-            stack_sentences.append(sentence)
+        stack_sentences = []
+        for sentence in sentences:
+            if any(indicator in sentence for indicator in stack_indicators):
+                stack_sentences.append(sentence)
 
-    # Если не нашли явных указаний на стек, берем все предложения
-    if not stack_sentences:
-        stack_sentences = sentences
+        # Если не нашли явных указаний на стек, берем все предложения
+        if not stack_sentences:
+            stack_sentences = sentences
 
-    # Объединяем все предложения со стеком
-    stack_text = " ".join(stack_sentences)
+        # Объединяем все предложения со стеком
+        stack_text = " ".join(stack_sentences)
 
-    # Разбиваем на слова и очищаем
-    words = word_tokenize(stack_text)
-    words = [w for w in words if len(w) > 2]  # Убираем короткие слова
+        # Разбиваем на слова и очищаем
+        words = word_tokenize(stack_text)
+        words = [w for w in words if len(w) > 2]  # Убираем короткие слова
 
-    return stack_text, words
+        return stack_text, words
+    except Exception as e:
+        st.error(f"Ошибка при извлечении стека: {str(e)}")
+        return text, []
 
 
 @st.cache_data
@@ -524,7 +530,8 @@ def analyze_skills(job_description, resume_text):
         if model is None:
             return {
                 "missing_skills": set(),
-                "missing_experience": [],
+                "extra_skills": set(),
+                "similarity": 0.0,
                 "job_stack": job_stack_text,
                 "resume_stack": resume_stack_text,
             }
