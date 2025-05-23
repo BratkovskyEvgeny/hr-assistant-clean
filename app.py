@@ -282,20 +282,34 @@ if uploaded_file is not None and job_description:
     # Отображаем результаты анализа
     if analysis_results:
         # Отображаем общий процент соответствия
-        overall_match = analysis_results.get("overall_match", 0.0)
         st.metric(
             "Общее соответствие",
-            f"{overall_match:.1f}%",
-            delta=f"{overall_match - 50:.1f}%",
-            delta_color="normal" if overall_match >= 50 else "inverse",
+            f"{similarity_score:.1f}%",
+            delta=f"{similarity_score - 50:.1f}%",
+            delta_color="normal" if similarity_score >= 50 else "inverse",
         )
+
+        # Отображаем отсутствующие навыки и опыт
+        missing_skills = analysis_results.get("missing_skills", set())
+        missing_experience = analysis_results.get("missing_experience", [])
+
+        if missing_skills or missing_experience:
+            st.warning("**Отсутствующие навыки и опыт:**")
+            if missing_skills:
+                st.write("**Отсутствующие навыки:**")
+                for skill in sorted(missing_skills):
+                    st.write(f"- {skill}")
+            if missing_experience:
+                st.write("**Отсутствующий опыт:**")
+                for exp in missing_experience:
+                    st.write(f"- {exp}")
 
         # Создаем вкладки для разных типов анализа
         tab1, tab2, tab3 = st.tabs(["Опыт работы", "Образование", "Навыки"])
 
         with tab1:
-            if "experience" in analysis_results:
-                exp_data = analysis_results["experience"]
+            if "experience" in detailed_analysis:
+                exp_data = detailed_analysis["experience"]
                 st.subheader("Опыт работы")
                 st.write(f"**Соответствие:** {exp_data['relevance']:.1f}%")
                 if exp_data["text"].strip():
@@ -314,8 +328,8 @@ if uploaded_file is not None and job_description:
                         st.write(f"- {skill}")
 
         with tab2:
-            if "education" in analysis_results:
-                edu_data = analysis_results["education"]
+            if "education" in detailed_analysis:
+                edu_data = detailed_analysis["education"]
                 st.subheader("Образование")
                 st.write(f"**Соответствие:** {edu_data['relevance']:.1f}%")
                 if edu_data["text"].strip():
@@ -330,8 +344,8 @@ if uploaded_file is not None and job_description:
                         st.write(f"- {skill}")
 
         with tab3:
-            if "skills" in analysis_results:
-                skills_data = analysis_results["skills"]
+            if "skills" in detailed_analysis:
+                skills_data = detailed_analysis["skills"]
                 st.subheader("Навыки")
                 st.write(f"**Соответствие:** {skills_data['relevance']:.1f}%")
                 if skills_data["text"].strip():
@@ -345,26 +359,12 @@ if uploaded_file is not None and job_description:
                     for skill in skills_data["skills"]:
                         st.write(f"- {skill}")
 
-        # Отображаем отсутствующие навыки и опыт
-        missing_skills = analysis_results.get("missing_skills", [])
-        missing_experience = analysis_results.get("missing_experience", [])
-        if missing_skills or missing_experience:
-            st.warning("**Отсутствующие навыки и опыт:**")
-            if missing_skills:
-                st.write("**Отсутствующие навыки:**")
-                for skill in missing_skills:
-                    st.write(f"- {skill}")
-            if missing_experience:
-                st.write("**Отсутствующий опыт:**")
-                for exp in missing_experience:
-                    st.write(f"- {exp}")
-
         # Выводим весь текст резюме для диагностики
         st.markdown("#### 📝 Весь текст резюме (отладка)")
         st.text_area("Весь текст резюме", resume_text, height=200, disabled=True)
 
         # Отображаем отладочную информацию о найденных заголовках и тексте между ними
-        debug_headers = analysis_results.get("_debug_headers", [])
+        debug_headers = detailed_analysis.get("_debug_headers", [])
         if debug_headers:
             st.markdown("#### 🐞 Найденные заголовки и их позиции (отладка)")
             for i, h in enumerate(debug_headers):
