@@ -227,12 +227,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подготавливаем данные для запроса
         payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": max_tokens,
+            "input": {
+                "prompt": prompt,
+                "max_tokens": max_tokens,
                 "temperature": temperature,
-                "return_full_text": False,
-            },
+            }
         }
 
         # Формируем заголовки авторизации
@@ -242,26 +241,31 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подробное логирование запроса
         st.write("=== ДЕТАЛИ ЗАПРОСА ===")
-        st.write(f"URL запроса: {api_url}")
-        st.write("Payload запроса:")
-        st.json(payload)
-        st.write("Заголовки запроса:")
+        st.write("1. URL запроса:")
+        st.code(api_url, language="text")
+
+        st.write("2. Payload запроса:")
+        st.code(json.dumps(payload, indent=2, ensure_ascii=False), language="json")
+
+        st.write("3. Заголовки запроса:")
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Basic {base64_auth}",
             "Accept": "application/json",
         }
-        st.json({k: v if k != "Authorization" else "***" for k, v in headers.items()})
+        st.code(
+            json.dumps(
+                {k: v if k != "Authorization" else "***" for k, v in headers.items()},
+                indent=2,
+            ),
+            language="json",
+        )
 
         # Отправляем запрос
         try:
-            st.write("Отправка запроса...")
+            st.write("4. Отправка запроса...")
             response = requests.post(
-                api_url,
-                json=payload,
-                headers=headers,
-                timeout=30,
-                verify=True,  # Проверяем SSL сертификат
+                api_url, json=payload, headers=headers, timeout=30, verify=True
             )
             st.write("Запрос отправлен успешно")
         except requests.exceptions.SSLError as e:
@@ -276,23 +280,27 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подробное логирование ответа
         st.write("=== ДЕТАЛИ ОТВЕТА ===")
-        st.write(f"Статус код: {response.status_code}")
-        st.write("Заголовки ответа:")
-        st.json(dict(response.headers))
-        st.write("Тело ответа:")
+        st.write("1. Статус код:")
+        st.code(str(response.status_code), language="text")
+
+        st.write("2. Заголовки ответа:")
+        st.code(json.dumps(dict(response.headers), indent=2), language="json")
+
+        st.write("3. Тело ответа:")
         try:
             response_json = response.json()
-            st.json(response_json)
+            st.code(
+                json.dumps(response_json, indent=2, ensure_ascii=False), language="json"
+            )
         except:
-            st.write(response.text)
+            st.code(response.text, language="text")
 
         # Проверяем статус ответа
         if response.status_code == 200:
             try:
                 result = response.json()
-                if isinstance(result, list) and len(result) > 0:
-                    # Формат ответа от Hugging Face API
-                    return result[0].get("generated_text", "")
+                if "output" in result and "text" in result["output"]:
+                    return result["output"]["text"]
                 elif "generated_text" in result:
                     return result["generated_text"]
                 elif "text" in result:
