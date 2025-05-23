@@ -231,6 +231,7 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 "prompt": prompt,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
+                "model": "distilgpt2",  # Указываем модель из ноутбука
             }
         }
 
@@ -283,6 +284,8 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                     return result["output"]["text"]
                 elif "generated_text" in result:
                     return result["generated_text"]
+                elif "text" in result:
+                    return result["text"]
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
                     raise Exception(f"Ошибка в ответе API: {error_msg}")
