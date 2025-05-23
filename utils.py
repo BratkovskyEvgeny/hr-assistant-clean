@@ -29,7 +29,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 model = None
 
 # URL для API Hugging Face
-API_URL = "https://api-inference.huggingface.co/models/EleutherAI/pythia-70m"
+API_URL = "https://api-inference.huggingface.co/models/facebook/opt-350m"
 headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
