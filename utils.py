@@ -67,11 +67,7 @@ def extract_stack_from_text(text):
             "tools",
             "используем",
             "используем:",
-            "используем:",
-            "используем:",
             "работаем с",
-            "работаем с:",
-            "работаем с:",
             "работаем с:",
             "требования",
             "requirements",
@@ -102,6 +98,47 @@ def extract_stack_from_text(text):
     except Exception as e:
         st.error(f"Ошибка при извлечении стека: {str(e)}")
         return text, []
+
+
+def extract_text_from_file(file):
+    """Извлекает текст из загруженного файла (PDF или DOCX)"""
+    try:
+        if file.type == "application/pdf":
+            # Читаем PDF
+            pdf_reader = PyPDF2.PdfReader(file)
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+            return text
+        elif (
+            file.type
+            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ):
+            # Читаем DOCX
+            doc = docx.Document(file)
+            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            return text
+        else:
+            st.error("Неподдерживаемый формат файла")
+            return ""
+    except Exception as e:
+        st.error(f"Ошибка при чтении файла: {str(e)}")
+        return ""
+
+
+def query_llm(prompt):
+    """Отправляет запрос к LLM через Hugging Face API"""
+    try:
+        response = requests.post(
+            API_URL,
+            headers=HEADERS,
+            json={"inputs": prompt, "parameters": {"return_full_text": False}},
+        )
+        response.raise_for_status()
+        return response.json()[0]["generated_text"]
+    except Exception as e:
+        st.error(f"Ошибка при запросе к LLM: {str(e)}")
+        return "Не удалось получить ответ от модели"
 
 
 @st.cache_data
@@ -171,44 +208,3 @@ def analyze_skills(job_description, resume_text):
             "job_stack": "",
             "resume_stack": "",
         }
-
-
-def extract_text_from_file(file):
-    """Извлекает текст из загруженного файла (PDF или DOCX)"""
-    try:
-        if file.type == "application/pdf":
-            # Читаем PDF
-            pdf_reader = PyPDF2.PdfReader(file)
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-            return text
-        elif (
-            file.type
-            == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ):
-            # Читаем DOCX
-            doc = docx.Document(file)
-            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-            return text
-        else:
-            st.error("Неподдерживаемый формат файла")
-            return ""
-    except Exception as e:
-        st.error(f"Ошибка при чтении файла: {str(e)}")
-        return ""
-
-
-def query_llm(prompt):
-    """Отправляет запрос к LLM через Hugging Face API"""
-    try:
-        response = requests.post(
-            API_URL,
-            headers=HEADERS,
-            json={"inputs": prompt, "parameters": {"return_full_text": False}},
-        )
-        response.raise_for_status()
-        return response.json()[0]["generated_text"]
-    except Exception as e:
-        st.error(f"Ошибка при запросе к LLM: {str(e)}")
-        return "Не удалось получить ответ от модели"
