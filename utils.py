@@ -28,7 +28,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 # Инициализация модели для многоязычного анализа
 model = None
 
-API_URL = "https://api-inference.huggingface.co/models/distilgpt2"
+API_URL = "https://api-inference.huggingface.co/models/gpt2-medium"
 headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
