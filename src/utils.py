@@ -227,11 +227,10 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подготавливаем данные для запроса
         payload = {
-            "input": {
+            "parameters": {
                 "prompt": prompt,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-                "model": "distilgpt2",  # Указываем модель из ноутбука
             }
         }
 
@@ -296,6 +295,14 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                     return result["generated_text"]
                 elif "text" in result:
                     return result["text"]
+                elif "runId" in result:
+                    # Если получили ID запуска, нужно получить результат
+                    run_id = result["runId"]
+                    st.write(f"Получен ID запуска: {run_id}")
+                    # TODO: Добавить логику получения результата по runId
+                    raise Exception(
+                        "Получен ID запуска, но логика получения результата не реализована"
+                    )
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
                     st.error(f"Неожиданный формат ответа: {result}")
