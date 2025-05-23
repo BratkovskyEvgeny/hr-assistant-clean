@@ -4,6 +4,7 @@ import re
 import nltk
 import numpy as np
 import PyPDF2
+import requests
 import streamlit as st
 from docx import Document
 from nltk.corpus import stopwords
@@ -26,6 +27,10 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 
 # Инициализация модели для многоязычного анализа
 model = None
+
+# API URL для Hugging Face
+API_URL = "https://api-inference.huggingface.co/models/gpt2"
+HEADERS = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
 # Инициализация LLM pipeline
@@ -566,34 +571,46 @@ def get_detailed_analysis(job_description, resume_text):
 
 @st.cache_data
 def query_llm(prompt):
-    """Отправляет запрос к LLM модели"""
+    """Отправляет запрос к LLM модели через API"""
     try:
-        # Получаем pipeline
-        generator = get_llm_pipeline()
-        if generator is None:
-            return "Не удалось загрузить модель. Пожалуйста, попробуйте позже."
-
         # Форматируем промпт
         formatted_prompt = f"""HR Analysis Task:
 {prompt}
 
 Analysis:"""
 
-        # Генерируем ответ с ограничением длины
-        result = generator(
-            formatted_prompt,
-            max_length=150,  # Уменьшаем для экономии памяти
-            num_return_sequences=1,
-            temperature=0.7,
-            top_p=0.95,
-            do_sample=True,
-            pad_token_id=generator.tokenizer.eos_token_id,
-        )[0]["generated_text"]
+        # Отправляем запрос к API
+        response = requests.post(
+            API_URL,
+            headers=HEADERS,
+            json={
+                "inputs": formatted_prompt,
+                "parameters": {
+                    "max_length": 150,
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "do_sample": True,
+                },
+            },
+            timeout=30,  # Таймаут 30 секунд
+        )
 
-        # Очищаем результат от префикса
-        result = result.replace(formatted_prompt, "").strip()
-        return result
+        # Проверяем ответ
+        if response.status_code == 200:
+            result = response.json()[0]["generated_text"]
+            # Очищаем результат от префикса
+            result = result.replace(formatted_prompt, "").strip()
+            return result
+        elif response.status_code == 503:
+            return (
+                "Модель загружается. Пожалуйста, подождите немного и попробуйте снова."
+            )
+        else:
+            st.error(f"Ошибка API: {response.status_code}")
+            return "Произошла ошибка при анализе. Пожалуйста, попробуйте позже."
 
+    except requests.exceptions.Timeout:
+        return "Превышено время ожидания ответа. Пожалуйста, попробуйте позже."
     except Exception as e:
-        st.error(f"Ошибка при обращении к LLM: {str(e)}")
+        st.error(f"Ошибка при обращении к API: {str(e)}")
         return "Произошла ошибка при анализе. Пожалуйста, попробуйте позже."
