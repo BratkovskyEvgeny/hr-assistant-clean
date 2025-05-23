@@ -38,18 +38,23 @@ def get_llm_pipeline():
             model_name = "gpt2"
             tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=CACHE_DIR)
 
-            # Загружаем модель с использованием accelerate
+            # Загружаем модель с оптимизацией памяти
             model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 cache_dir=CACHE_DIR,
                 device_map="auto",
                 torch_dtype="auto",
                 low_cpu_mem_usage=True,
+                max_memory={0: "2GB"},  # Ограничиваем использование памяти
             )
 
-            # Создаем pipeline
+            # Создаем pipeline с оптимизацией
             return pipeline(
-                "text-generation", model=model, tokenizer=tokenizer, device_map="auto"
+                "text-generation",
+                model=model,
+                tokenizer=tokenizer,
+                device_map="auto",
+                max_memory={0: "2GB"},
             )
     except Exception as e:
         st.error(f"Ошибка при загрузке LLM модели: {str(e)}")
@@ -574,14 +579,15 @@ def query_llm(prompt):
 
 Analysis:"""
 
-        # Генерируем ответ
+        # Генерируем ответ с ограничением длины
         result = generator(
             formatted_prompt,
-            max_length=200,  # Уменьшаем для более быстрого ответа
+            max_length=150,  # Уменьшаем для экономии памяти
             num_return_sequences=1,
             temperature=0.7,
             top_p=0.95,
             do_sample=True,
+            pad_token_id=generator.tokenizer.eos_token_id,
         )[0]["generated_text"]
 
         # Очищаем результат от префикса
