@@ -16,13 +16,16 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, logging, pipeline
 # Отключаем предупреждения transformers
 logging.set_verbosity_error()
 
+# Создаем директорию для NLTK данных
+NLTK_DATA_DIR = os.path.join(os.path.dirname(__file__), "nltk_data")
+os.makedirs(NLTK_DATA_DIR, exist_ok=True)
+nltk.data.path.append(NLTK_DATA_DIR)
+
 # Загружаем необходимые ресурсы NLTK
 try:
-    nltk.data.find("tokenizers/punkt")
-except LookupError:
-    nltk.download("punkt", quiet=True)
-    nltk.download("averaged_perceptron_tagger", quiet=True)
-    nltk.download("wordnet", quiet=True)
+    nltk.download("punkt", download_dir=NLTK_DATA_DIR, quiet=True)
+except Exception as e:
+    st.error(f"Ошибка при загрузке NLTK ресурсов: {str(e)}")
 
 # Путь для кэширования модели
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
@@ -463,11 +466,27 @@ def extract_responsibilities(text):
     return responsibilities
 
 
+def simple_tokenize(text):
+    """Простая токенизация текста на предложения и слова"""
+    # Разбиваем на предложения по знакам препинания
+    sentences = re.split(r"[.!?]+", text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    # Разбиваем на слова
+    words = []
+    for sentence in sentences:
+        # Разбиваем по пробелам и знакам препинания
+        sentence_words = re.findall(r"\b\w+\b", sentence.lower())
+        words.extend(sentence_words)
+
+    return sentences, words
+
+
 def extract_stack_from_text(text):
     """Извлекает стек технологий из текста"""
     try:
-        # Разбиваем текст на предложения
-        sentences = sent_tokenize(text.lower())
+        # Разбиваем текст на предложения и слова
+        sentences, words = simple_tokenize(text.lower())
 
         # Ищем упоминания стека
         stack_indicators = [
@@ -507,8 +526,7 @@ def extract_stack_from_text(text):
         # Объединяем все предложения со стеком
         stack_text = " ".join(stack_sentences)
 
-        # Разбиваем на слова и очищаем
-        words = word_tokenize(stack_text)
+        # Очищаем слова
         words = [w for w in words if len(w) > 2]  # Убираем короткие слова
 
         return stack_text, words
