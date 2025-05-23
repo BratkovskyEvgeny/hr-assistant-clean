@@ -230,8 +230,9 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 "prompt": prompt,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-            },
-            "parameters": {"model": "gpt-3.5-turbo"},
+                "model": "gpt-3.5-turbo",
+                "stop": None,
+            }
         }
 
         # Формируем заголовки авторизации
@@ -251,6 +252,7 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Basic {base64_auth}",
+                "Accept": "application/json",
             },
             timeout=30,
         )
@@ -264,6 +266,8 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             result = response.json()
             if "output" in result and "text" in result["output"]:
                 return result["output"]["text"]
+            elif "generated_text" in result:
+                return result["generated_text"]
             else:
                 raise Exception(f"Неверный формат ответа от API: {result}")
         else:
