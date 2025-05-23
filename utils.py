@@ -1,13 +1,10 @@
 import os
 import re
 
-
-import docx
 import PyPDF2
 import requests
 import streamlit as st
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
 # Путь для кэширования модели
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
@@ -35,69 +32,164 @@ def get_model() -> SentenceTransformer:
         return None
 
 
-def simple_tokenize(text):
-    """Простая токенизация текста на предложения и слова"""
-    # Разбиваем на предложения по знакам препинания
-    sentences = re.split(r"[.!?]+", text)
-    sentences = [s.strip() for s in sentences if s.strip()]
+def extract_skills(text):
+    """Извлекает навыки из текста"""
+    # Разбиваем текст на слова
+    words = re.findall(r"\b\w+\b", text.lower())
 
-    # Разбиваем на слова
-    words = []
-    for sentence in sentences:
-        # Разбиваем по пробелам и знакам препинания
-        sentence_words = re.findall(r"\b\w+\b", sentence.lower())
-        words.extend(sentence_words)
+    # Фильтруем короткие слова и стоп-слова
+    stop_words = {
+        "и",
+        "в",
+        "во",
+        "не",
+        "что",
+        "с",
+        "со",
+        "как",
+        "а",
+        "то",
+        "все",
+        "она",
+        "так",
+        "его",
+        "но",
+        "да",
+        "ты",
+        "к",
+        "у",
+        "же",
+        "вы",
+        "за",
+        "бы",
+        "по",
+        "только",
+        "ее",
+        "мне",
+        "было",
+        "вот",
+        "от",
+        "меня",
+        "еще",
+        "нет",
+        "о",
+        "из",
+        "ему",
+        "теперь",
+        "когда",
+        "даже",
+        "ну",
+        "вдруг",
+        "ли",
+        "если",
+        "уже",
+        "или",
+        "ни",
+        "быть",
+        "был",
+        "него",
+        "до",
+        "вас",
+        "нибудь",
+        "опять",
+        "уж",
+        "вам",
+        "ведь",
+        "там",
+        "потом",
+        "себя",
+        "ничего",
+        "ей",
+        "может",
+        "они",
+        "тут",
+        "где",
+        "есть",
+        "надо",
+        "ней",
+        "для",
+        "мы",
+        "тебя",
+        "их",
+        "чем",
+        "была",
+        "сам",
+        "чтоб",
+        "без",
+        "будто",
+        "чего",
+        "раз",
+        "тоже",
+        "себе",
+        "под",
+        "будет",
+        "ж",
+        "тогда",
+        "кто",
+        "этот",
+        "того",
+        "потому",
+        "этого",
+        "какой",
+        "совсем",
+        "ним",
+        "здесь",
+        "этом",
+        "один",
+        "почти",
+        "мой",
+        "тем",
+        "чтобы",
+        "нее",
+        "сейчас",
+        "были",
+        "куда",
+        "зачем",
+        "всех",
+        "никогда",
+        "можно",
+        "при",
+        "на",
+        "об",
+        "я",
+        "а",
+        "б",
+        "в",
+        "г",
+        "д",
+        "е",
+        "ж",
+        "з",
+        "и",
+        "й",
+        "к",
+        "л",
+        "м",
+        "н",
+        "о",
+        "п",
+        "р",
+        "с",
+        "т",
+        "у",
+        "ф",
+        "х",
+        "ц",
+        "ч",
+        "ш",
+        "щ",
+        "ъ",
+        "ы",
+        "ь",
+        "э",
+        "ю",
+        "я",
+    }
 
-    return sentences, words
+    # Фильтруем слова
+    skills = {word for word in words if len(word) > 2 and word not in stop_words}
 
-
-def extract_stack_from_text(text):
-    """Извлекает стек технологий из текста"""
-    try:
-        # Разбиваем текст на предложения и слова
-        sentences, words = simple_tokenize(text.lower())
-
-        # Ищем упоминания стека
-        stack_indicators = [
-            "стек",
-            "stack",
-            "технологии",
-            "technologies",
-            "инструменты",
-            "tools",
-            "используем",
-            "используем:",
-            "работаем с",
-            "работаем с:",
-            "требования",
-            "requirements",
-            "требования:",
-            "requirements:",
-            "навыки",
-            "skills",
-            "навыки:",
-            "skills:",
-        ]
-
-        stack_sentences = []
-        for sentence in sentences:
-            if any(indicator in sentence for indicator in stack_indicators):
-                stack_sentences.append(sentence)
-
-        # Если не нашли явных указаний на стек, берем все предложения
-        if not stack_sentences:
-            stack_sentences = sentences
-
-        # Объединяем все предложения со стеком
-        stack_text = " ".join(stack_sentences)
-
-        # Очищаем слова
-        words = [w for w in words if len(w) > 2]  # Убираем короткие слова
-
-        return stack_text, words
-    except Exception as e:
-        st.error(f"Ошибка при извлечении стека: {str(e)}")
-        return text, []
+    return skills
 
 
 def extract_text_from_file(file):
@@ -143,60 +235,37 @@ def query_llm(prompt):
 
 @st.cache_data
 def analyze_skills(job_description, resume_text):
-    """Анализирует соответствие стека технологий"""
+    """Анализирует соответствие навыков"""
     try:
-        # Извлекаем стек из описания вакансии и резюме
-        job_stack_text, job_words = extract_stack_from_text(job_description)
-        resume_stack_text, resume_words = extract_stack_from_text(resume_text)
+        # Извлекаем навыки из описания вакансии и резюме
+        job_skills = extract_skills(job_description)
+        resume_skills = extract_skills(resume_text)
 
-        # Получаем модель для анализа
-        model = get_model()
-        if model is None:
-            return {
-                "missing_skills": set(),
-                "extra_skills": set(),
-                "similarity": 0.0,
-                "job_stack": job_stack_text,
-                "resume_stack": resume_stack_text,
-            }
+        # Находим отсутствующие и лишние навыки
+        missing_skills = job_skills - resume_skills
+        extra_skills = resume_skills - job_skills
 
-        # Получаем эмбеддинги для текстов стека
-        job_embedding = model.encode(job_stack_text)
-        resume_embedding = model.encode(resume_stack_text)
-
-        # Вычисляем схожесть стеков
-        similarity = cosine_similarity(
-            job_embedding.reshape(1, -1), resume_embedding.reshape(1, -1)
-        )[0][0]
-
-        # Находим уникальные слова в каждом стеке
-        job_unique = set(job_words) - set(resume_words)
-        resume_unique = set(resume_words) - set(job_words)
+        # Вычисляем схожесть
+        similarity = (
+            len(job_skills & resume_skills) / len(job_skills) if job_skills else 0.0
+        )
 
         # Отладочная информация
         st.write("### Отладочная информация")
-        st.write("#### Стек из вакансии:")
-        st.write(job_stack_text)
-        st.write("#### Стек из резюме:")
-        st.write(resume_stack_text)
-        st.write(f"#### Схожесть стеков: {similarity:.2%}")
-
-        if job_unique:
-            st.write("#### Уникальные технологии в вакансии:")
-            for tech in sorted(job_unique):
-                st.write(f"- {tech}")
-
-        if resume_unique:
-            st.write("#### Уникальные технологии в резюме:")
-            for tech in sorted(resume_unique):
-                st.write(f"- {tech}")
+        st.write("#### Навыки из вакансии:")
+        for skill in sorted(job_skills):
+            st.write(f"- {skill}")
+        st.write("#### Навыки из резюме:")
+        for skill in sorted(resume_skills):
+            st.write(f"- {skill}")
+        st.write(f"#### Схожесть навыков: {similarity:.2%}")
 
         return {
-            "missing_skills": job_unique,
-            "extra_skills": resume_unique,
+            "missing_skills": missing_skills,
+            "extra_skills": extra_skills,
             "similarity": similarity,
-            "job_stack": job_stack_text,
-            "resume_stack": resume_stack_text,
+            "job_skills": job_skills,
+            "resume_skills": resume_skills,
         }
 
     except Exception as e:
@@ -205,6 +274,6 @@ def analyze_skills(job_description, resume_text):
             "missing_skills": set(),
             "extra_skills": set(),
             "similarity": 0.0,
-            "job_stack": "",
-            "resume_stack": "",
+            "job_skills": set(),
+            "resume_skills": set(),
         }
