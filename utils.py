@@ -165,10 +165,6 @@ def extract_skills(text):
     # Приводим текст к нижнему регистру и удаляем лишние пробелы
     text = " ".join(text.lower().split())
 
-    # Удаляем общие слова из текста
-    for word in common_words:
-        text = text.replace(word, "")
-
     # Находим технические навыки
     found_tech_skills = set()
     for skill in tech_skills:
@@ -183,6 +179,9 @@ def extract_skills(text):
 
     # Объединяем все найденные навыки
     all_skills = found_tech_skills | found_soft_skills
+
+    # Удаляем общие слова из результата
+    all_skills = {skill for skill in all_skills if skill not in common_words}
 
     return all_skills
 

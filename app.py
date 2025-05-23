@@ -279,17 +279,15 @@ if uploaded_file and job_description:
 
         try:
             # Формируем промпт для генерации рекомендаций
+            missing = list(
+                skills_analysis["missing_tech"] | skills_analysis["missing_other"]
+            )
+            extra = list(skills_analysis["extra_tech"] | skills_analysis["extra_other"])
+
             prompt = f"""
-            Проанализируй резюме и вакансию, дай краткие рекомендации.
-
-            Вакансия:
-            {job_description}
-
-            Анализ навыков:
-            - Отсутствуют: {', '.join(skills_analysis['missing_tech'] | skills_analysis['missing_other'])}
-            - Есть дополнительно: {', '.join(skills_analysis['extra_tech'] | skills_analysis['extra_other'])}
-
-            Дай 3-4 конкретных рекомендации по улучшению резюме.
+            Дай 3 рекомендации по улучшению резюме.
+            Отсутствуют: {', '.join(missing) if missing else 'нет'}
+            Есть дополнительно: {', '.join(extra) if extra else 'нет'}
             """
 
             with st.spinner("Генерируем рекомендации..."):
