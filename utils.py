@@ -5,6 +5,7 @@ import nltk
 import numpy as np
 import PyPDF2
 import requests
+import streamlit as st
 from docx import Document
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
@@ -27,33 +28,32 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 # Инициализация модели для многоязычного анализа
 model = None
 
-API_URL = (
-    "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-)
+API_URL = "https://api-inference.huggingface.co/models/facebook/opt-350m"
 headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
+@st.cache_resource
 def get_model() -> SentenceTransformer:
     """Получает модель с кэшированием"""
     try:
-        # Проверяем наличие кэшированной модели
-        if os.path.exists(CACHE_DIR):
+        with st.spinner("Загрузка модели для анализа текста..."):
+            # Проверяем наличие кэшированной модели
+            if os.path.exists(CACHE_DIR):
+                return SentenceTransformer(
+                    "paraphrase-multilingual-MiniLM-L12-v2",
+                    cache_folder=CACHE_DIR,
+                    use_auth_token=True,
+                )
+
+            # Если кэша нет, создаем директорию и загружаем модель
+            os.makedirs(CACHE_DIR, exist_ok=True)
             return SentenceTransformer(
                 "paraphrase-multilingual-MiniLM-L12-v2",
                 cache_folder=CACHE_DIR,
                 use_auth_token=True,
             )
-
-        # Если кэша нет, создаем директорию и загружаем модель
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        return SentenceTransformer(
-            "paraphrase-multilingual-MiniLM-L12-v2",
-            cache_folder=CACHE_DIR,
-            use_auth_token=True,
-        )
     except Exception as e:
-        print(f"Ошибка при загрузке модели: {str(e)}")
-        # Возвращаем None в случае ошибки
+        st.error(f"Ошибка при загрузке модели: {str(e)}")
         return None
 
 
@@ -570,8 +570,26 @@ def get_detailed_analysis(job_description, resume_text):
 
 
 def query_llm(prompt):
-    response = requests.post(API_URL, headers=headers, json={"inputs": prompt})
-    if response.status_code == 200:
-        return response.json()[0]["generated_text"]
-    else:
-        return f"Ошибка: {response.status_code} — {response.text}"
+    """Отправляет запрос к LLM модели"""
+    try:
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json={
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": 500,
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "return_full_text": False,
+                },
+            },
+        )
+        if response.status_code == 200:
+            return response.json()[0]["generated_text"]
+        else:
+            st.error(f"Ошибка API: {response.status_code} — {response.text}")
+            return "Не удалось получить анализ от LLM. Пожалуйста, попробуйте позже."
+    except Exception as e:
+        st.error(f"Ошибка при обращении к LLM: {str(e)}")
+        return "Произошла ошибка при анализе. Пожалуйста, попробуйте позже."

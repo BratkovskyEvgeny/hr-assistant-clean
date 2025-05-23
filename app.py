@@ -1,5 +1,3 @@
-import time
-
 import streamlit as st
 
 from utils import (
@@ -264,19 +262,20 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None and job_description:
     # Показываем прогресс анализа
-    with st.spinner("Анализируем резюме..."):
-        progress_bar = st.progress(0)
-        for i in range(100):
-            time.sleep(0.01)
-            progress_bar.progress(i + 1)
-
+    with st.spinner("Подготовка к анализу..."):
         # Извлекаем текст из резюме
         resume_text = extract_text_from_file(uploaded_file)
+        st.success("✅ Текст из резюме успешно извлечен")
 
+    with st.spinner("Анализируем соответствие резюме требованиям..."):
         # Анализируем соответствие
         similarity_score = calculate_similarity(job_description, resume_text)
         analysis_results = analyze_skills(job_description, resume_text)
+        st.success("✅ Анализ соответствия завершен")
+
+    with st.spinner("Выполняем детальный анализ..."):
         detailed_analysis = get_detailed_analysis(job_description, resume_text)
+        st.success("✅ Детальный анализ завершен")
 
     st.markdown("### 📊 Результаты анализа")
 
@@ -384,7 +383,7 @@ if uploaded_file is not None and job_description:
 
     # Кнопка для глубокого LLM-анализа
     if uploaded_file is not None and job_description:
-        if st.button("Глубокий LLM-анализ (Mistral-7B)"):
+        if st.button("Глубокий LLM-анализ (OPT-350M)"):
             with st.spinner("Анализируем с помощью LLM..."):
                 prompt = f"""
 Ты — HR-ассистент. Вот описание вакансии:
@@ -399,5 +398,5 @@ if uploaded_file is not None and job_description:
 Ответь структурировано.
 """
                 result = query_llm(prompt)
-                st.markdown("### 📝 Результаты LLM-анализа (Mistral-7B)")
+                st.markdown("### 📝 Результаты LLM-анализа (OPT-350M)")
                 st.write(result)
