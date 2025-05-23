@@ -1,4 +1,3 @@
-import base64
 import json
 
 import requests
@@ -321,12 +320,21 @@ if st.button("🔍 Анализировать", type="primary"):
             key = st.secrets["kaggle"]["key"]
 
             # Подготавливаем данные для запроса
-            payload = {"prompt": prompt, "max_tokens": 1000, "temperature": 0.7}
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": 1000,
+                    "temperature": 0.7,
+                    "return_full_text": False,
+                },
+            }
 
             # Формируем заголовки авторизации
-            auth = f"{username}:{key}"
-            auth_bytes = auth.encode("ascii")
-            base64_auth = base64.b64encode(auth_bytes).decode("ascii")
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+                "Accept": "application/json",
+            }
 
             # Логируем детали запроса
             log_text = []
@@ -336,11 +344,6 @@ if st.button("🔍 Анализировать", type="primary"):
                 f"Payload запроса: {json.dumps(payload, indent=2, ensure_ascii=False)}"
             )
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Basic {base64_auth}",
-                "Accept": "application/json",
-            }
             log_text.append(
                 f"Заголовки запроса: {json.dumps({k: v if k != 'Authorization' else '***' for k, v in headers.items()}, indent=2)}"
             )
