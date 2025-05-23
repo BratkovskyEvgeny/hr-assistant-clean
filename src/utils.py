@@ -230,13 +230,19 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 "prompt": prompt,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-            }
+            },
+            "parameters": {"model": "gpt-3.5-turbo"},
         }
 
         # Формируем заголовки авторизации
         auth = f"{username}:{key}"
         auth_bytes = auth.encode("ascii")
         base64_auth = base64.b64encode(auth_bytes).decode("ascii")
+
+        # Логируем запрос (без учетных данных)
+        st.write("Отправляем запрос к API...")
+        st.write(f"URL: {api_url}")
+        st.write(f"Payload: {payload}")
 
         # Отправляем запрос
         response = requests.post(
@@ -248,6 +254,10 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             },
             timeout=30,
         )
+
+        # Логируем ответ
+        st.write(f"Статус ответа: {response.status_code}")
+        st.write(f"Текст ответа: {response.text}")
 
         # Проверяем статус ответа
         if response.status_code == 200:
