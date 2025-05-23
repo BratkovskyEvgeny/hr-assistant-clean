@@ -255,49 +255,55 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         auth_bytes = auth.encode("ascii")
         base64_auth = base64.b64encode(auth_bytes).decode("ascii")
 
+        # Создаем контейнер для логов
+        log_container = st.empty()
+        log_text = []
+
+        def log(message):
+            log_text.append(message)
+            log_container.code("\n".join(log_text), language="text")
+
         # Логируем детали запроса
-        logger.info("=== ДЕТАЛИ ЗАПРОСА ===")
-        logger.info(f"URL запроса: {api_url}")
-        logger.info(
-            f"Payload запроса: {json.dumps(payload, indent=2, ensure_ascii=False)}"
-        )
+        log("=== ДЕТАЛИ ЗАПРОСА ===")
+        log(f"URL запроса: {api_url}")
+        log(f"Payload запроса: {json.dumps(payload, indent=2, ensure_ascii=False)}")
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Basic {base64_auth}",
             "Accept": "application/json",
         }
-        logger.info(
+        log(
             f"Заголовки запроса: {json.dumps({k: v if k != 'Authorization' else '***' for k, v in headers.items()}, indent=2)}"
         )
 
         # Отправляем запрос
         try:
-            logger.info("Отправка запроса...")
+            log("Отправка запроса...")
             response = requests.post(
                 api_url, json=payload, headers=headers, timeout=30, verify=True
             )
-            logger.info("Запрос отправлен успешно")
+            log("Запрос отправлен успешно")
         except requests.exceptions.SSLError as e:
-            logger.error(f"Ошибка SSL: {str(e)}")
+            log(f"Ошибка SSL: {str(e)}")
             raise Exception("Ошибка SSL при подключении к API")
         except requests.exceptions.ConnectionError as e:
-            logger.error(f"Ошибка подключения: {str(e)}")
+            log(f"Ошибка подключения: {str(e)}")
             raise Exception("Не удалось подключиться к API")
         except requests.exceptions.Timeout as e:
-            logger.error(f"Таймаут: {str(e)}")
+            log(f"Таймаут: {str(e)}")
             raise Exception("Превышено время ожидания ответа от API")
 
         # Логируем детали ответа
-        logger.info("=== ДЕТАЛИ ОТВЕТА ===")
-        logger.info(f"Статус код: {response.status_code}")
-        logger.info(f"Заголовки ответа: {json.dumps(dict(response.headers), indent=2)}")
+        log("=== ДЕТАЛИ ОТВЕТА ===")
+        log(f"Статус код: {response.status_code}")
+        log(f"Заголовки ответа: {json.dumps(dict(response.headers), indent=2)}")
         try:
             response_json = response.json()
-            logger.info(
+            log(
                 f"Тело ответа: {json.dumps(response_json, indent=2, ensure_ascii=False)}"
             )
         except:
-            logger.info(f"Тело ответа: {response.text}")
+            log(f"Тело ответа: {response.text}")
 
         # Проверяем статус ответа
         if response.status_code == 200:
@@ -311,11 +317,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                     return result["text"]
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
-                    logger.error(f"Неожиданный формат ответа: {result}")
+                    log(f"Неожиданный формат ответа: {result}")
                     raise Exception(f"Ошибка в ответе API: {error_msg}")
             except json.JSONDecodeError as e:
-                logger.error(f"Ошибка при разборе JSON: {str(e)}")
-                logger.error(f"Полученный текст: {response.text}")
+                log(f"Ошибка при разборе JSON: {str(e)}")
+                log(f"Полученный текст: {response.text}")
                 raise Exception("Неверный формат ответа от API")
         else:
             error_msg = f"Ошибка API: {response.status_code}"
@@ -324,11 +330,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 error_msg += f" - {error_details}"
             except:
                 error_msg += f" - {response.text}"
-            logger.error(f"Ошибка API: {error_msg}")
+            log(f"Ошибка API: {error_msg}")
             raise Exception(error_msg)
 
     except Exception as e:
-        logger.error(f"Ошибка при генерации текста: {str(e)}")
+        log(f"Ошибка при генерации текста: {str(e)}")
         raise
 
 
