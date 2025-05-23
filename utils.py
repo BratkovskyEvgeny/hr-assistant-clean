@@ -226,6 +226,7 @@ RESPONSIBILITY_KEYWORDS = {
 }
 
 
+@st.cache_data
 def extract_text_from_file(file):
     """Извлекает текст из PDF или DOCX файла"""
     if file.name.endswith(".pdf"):
@@ -236,6 +237,7 @@ def extract_text_from_file(file):
         raise ValueError("Неподдерживаемый формат файла")
 
 
+@st.cache_data
 def extract_text_from_pdf(file):
     """Извлекает текст из PDF файла"""
     pdf_reader = PyPDF2.PdfReader(file)
@@ -245,6 +247,7 @@ def extract_text_from_pdf(file):
     return text
 
 
+@st.cache_data
 def extract_text_from_docx(file):
     """Извлекает текст из DOCX файла"""
     doc = Document(file)
@@ -254,6 +257,7 @@ def extract_text_from_docx(file):
     return text
 
 
+@st.cache_data
 def preprocess_text(text):
     """Предобработка текста"""
     # Приведение к нижнему регистру
@@ -272,6 +276,7 @@ def preprocess_text(text):
     return " ".join(tokens)
 
 
+@st.cache_data
 def calculate_similarity(text1: str, text2: str) -> float:
     """Вычисляет семантическую схожесть между двумя текстами"""
     try:
@@ -308,8 +313,9 @@ def calculate_similarity(text1: str, text2: str) -> float:
         return 0.0
 
 
+@st.cache_data
 def extract_skills(text):
-    """Извлекает навыки из текста (поиск по подстроке, регистронезависимо)"""
+    """Извлекает навыки из текста"""
     # Разбиваем текст на предложения
     sentences = sent_tokenize(text.lower())
     skills = set()
@@ -340,65 +346,6 @@ def extract_skills(text):
         "task",
         "проект",
         "project",
-        "верим",
-        "делать",
-        "жизнь",
-        "инструмент",
-        "интеллект",
-        "который",
-        "легче",
-        "лучше",
-        "нам",
-        "наш",
-        "помогает",
-        "усиливает",
-        "что",
-        "это",
-        "агентов",
-        "баз",
-        "будут",
-        "вакансии",
-        "валюта",
-        "векторизованных",
-        "владельцев",
-        "внедрить",
-        "выполнять",
-        "достаточно",
-        "драгоценные",
-        "задач",
-        "задачу",
-        "знаний",
-        "конкретного",
-        "которые",
-        "лет",
-        "металлы",
-        "название",
-        "обязательно",
-        "опыта",
-        "организация",
-        "пайплайна",
-        "перед",
-        "полученного",
-        "продуктов",
-        "промышленное",
-        "процесса",
-        "процессе",
-        "работу",
-        "ранжирование",
-        "реализация",
-        "роли",
-        "сильных",
-        "слабых",
-        "собой",
-        "создания",
-        "создать",
-        "ставим",
-        "сторон",
-        "требования",
-        "уровне",
-        "цепочек",
-        "часть",
-        "эффективные",
     }
     # Собираем все ключевые слова из TECH_SKILLS в один плоский список
     all_tech_keywords = set()
@@ -411,6 +358,7 @@ def extract_skills(text):
     return skills
 
 
+@st.cache_data
 def extract_responsibilities(text):
     """Извлекает обязанности из текста"""
     responsibilities = []
@@ -449,6 +397,7 @@ def extract_responsibilities(text):
     return responsibilities
 
 
+@st.cache_data
 def analyze_skills(job_description, resume_text):
     """Анализирует отсутствующие навыки и опыт"""
     # Извлекаем навыки из описания вакансии и резюме
@@ -497,9 +446,10 @@ def analyze_skills(job_description, resume_text):
     return {"missing_skills": missing_skills, "missing_experience": missing_experience}
 
 
+@st.cache_data
 def get_detailed_analysis(job_description, resume_text):
-    """Получает детальный анализ резюме и возвращает найденные заголовки для отладки"""
-    # Ключевые слова для поиска секций (регистронезависимо, с учетом спецсимволов)
+    """Получает детальный анализ резюме"""
+    # Ключевые слова для поиска секций
     sections = {
         "experience": ["опыт работы", "experience", "work experience"],
         "education": ["образование", "education"],
@@ -519,11 +469,10 @@ def get_detailed_analysis(job_description, resume_text):
         return analysis
 
     resume_text_lower = resume_text.lower()
-    # Собираем все заголовки и их позиции с учетом запятых, пробелов и переносов
+    # Собираем все заголовки и их позиции
     found_headers = []
     for section, keywords in sections.items():
         for keyword in keywords:
-            # Регулярка: ищет заголовок как отдельное слово, с возможными пробелами, запятыми, переносами
             pattern = r"[\s,\n\r]*" + re.escape(keyword.lower()) + r"[\s,\n\r]*"
             for match in re.finditer(pattern, resume_text_lower):
                 found_headers.append(
@@ -587,6 +536,7 @@ def get_detailed_analysis(job_description, resume_text):
     return analysis
 
 
+@st.cache_data
 def query_llm(prompt):
     """Отправляет запрос к LLM модели"""
     try:
