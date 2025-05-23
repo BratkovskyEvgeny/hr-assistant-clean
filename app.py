@@ -1,5 +1,6 @@
 import streamlit as st
 
+from utils import analyze_skills, extract_text_from_file, query_llm
 
 # Настройка страницы
 st.set_page_config(
