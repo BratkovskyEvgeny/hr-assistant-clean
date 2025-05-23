@@ -1,7 +1,5 @@
 import os
 
-
-import requests
 from dotenv import load_dotenv
 
 # Загружаем переменные окружения из .env файла
@@ -11,9 +9,7 @@ load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 # URL модели
-API_URL = (
-    "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-)
+API_URL = "https://api-inference.huggingface.co/models/facebook/opt-350m"
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 
@@ -34,7 +30,7 @@ def test_model_access():
             API_URL,
             headers=HEADERS,
             json={
-                "inputs": "<s>[INST] Привет! Как дела? [/INST]",
+                "inputs": "Hello! How are you?",
                 "parameters": {
                     "max_new_tokens": 100,
                     "temperature": 0.7,
