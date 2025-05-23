@@ -1,12 +1,5 @@
 import streamlit as st
 
-from utils import (
-    analyze_skills,
-    calculate_similarity,
-    extract_text_from_file,
-    get_detailed_analysis,
-    query_llm,
-)
 
 # Настройка страницы
 st.set_page_config(
@@ -269,26 +262,13 @@ if uploaded_file is not None and job_description:
 
     with st.spinner("Анализируем соответствие резюме требованиям..."):
         # Анализируем соответствие
-        similarity_score = calculate_similarity(job_description, resume_text)
         analysis_results = analyze_skills(job_description, resume_text)
         st.success("✅ Анализ соответствия завершен")
-
-    with st.spinner("Выполняем детальный анализ..."):
-        detailed_analysis = get_detailed_analysis(job_description, resume_text)
-        st.success("✅ Детальный анализ завершен")
 
     st.markdown("### 📊 Результаты анализа")
 
     # Отображаем результаты анализа
     if analysis_results:
-        # Отображаем общий процент соответствия
-        st.metric(
-            "Общее соответствие",
-            f"{similarity_score:.1f}%",
-            delta=f"{similarity_score - 50:.1f}%",
-            delta_color="normal" if similarity_score >= 50 else "inverse",
-        )
-
         # Отображаем схожесть стеков
         stack_similarity = analysis_results.get("similarity", 0.0)
         st.metric(
@@ -320,83 +300,6 @@ if uploaded_file is not None and job_description:
                         st.write(f"- {skill}")
                 else:
                     st.info("**Нет дополнительных технологий в резюме**")
-
-        # Создаем вкладки для разных типов анализа
-        tab1, tab2, tab3 = st.tabs(["Опыт работы", "Образование", "Навыки"])
-
-        with tab1:
-            if "experience" in detailed_analysis:
-                exp_data = detailed_analysis["experience"]
-                st.subheader("Опыт работы")
-                st.write(f"**Соответствие:** {exp_data['relevance']:.1f}%")
-                if exp_data["text"].strip():
-                    st.text_area(
-                        "Текст секции", exp_data["text"], height=120, disabled=True
-                    )
-                else:
-                    st.warning("Секция 'Опыт работы' не найдена или пуста.")
-                if exp_data["responsibilities"]:
-                    st.write("**Обязанности:**")
-                    for resp in exp_data["responsibilities"]:
-                        st.write(f"- {resp}")
-                if exp_data["skills"]:
-                    st.write("**Приобретенные навыки:**")
-                    for skill in exp_data["skills"]:
-                        st.write(f"- {skill}")
-
-        with tab2:
-            if "education" in detailed_analysis:
-                edu_data = detailed_analysis["education"]
-                st.subheader("Образование")
-                st.write(f"**Соответствие:** {edu_data['relevance']:.1f}%")
-                if edu_data["text"].strip():
-                    st.text_area(
-                        "Текст секции", edu_data["text"], height=120, disabled=True
-                    )
-                else:
-                    st.warning("Секция 'Образование' не найдена или пуста.")
-                if edu_data["skills"]:
-                    st.write("**Приобретенные навыки:**")
-                    for skill in edu_data["skills"]:
-                        st.write(f"- {skill}")
-
-        with tab3:
-            if "skills" in detailed_analysis:
-                skills_data = detailed_analysis["skills"]
-                st.subheader("Навыки")
-                st.write(f"**Соответствие:** {skills_data['relevance']:.1f}%")
-                if skills_data["text"].strip():
-                    st.text_area(
-                        "Текст секции", skills_data["text"], height=120, disabled=True
-                    )
-                else:
-                    st.warning("Секция 'Навыки' не найдена или пуста.")
-                if skills_data["skills"]:
-                    st.write("**Технические навыки:**")
-                    for skill in skills_data["skills"]:
-                        st.write(f"- {skill}")
-
-        # Выводим весь текст резюме для диагностики
-        st.markdown("#### 📝 Весь текст резюме (отладка)")
-        st.text_area("Весь текст резюме", resume_text, height=200, disabled=True)
-
-        # Отображаем отладочную информацию о найденных заголовках и тексте между ними
-        debug_headers = detailed_analysis.get("_debug_headers", [])
-        if debug_headers:
-            st.markdown("#### 🐞 Найденные заголовки и их позиции (отладка)")
-            for i, h in enumerate(debug_headers):
-                section = h["section"]
-                start = h["end"]
-                end = (
-                    debug_headers[i + 1]["start"]
-                    if i + 1 < len(debug_headers)
-                    else len(resume_text)
-                )
-                section_text = resume_text[start:end].strip()
-                st.write(
-                    f"Секция: {section}, Заголовок: '{h['keyword']}', Позиция: {h['start']}-{h['end']}"
-                )
-                st.write(f"Текст секции (первые 100 символов): {section_text[:100]}")
 
     # Кнопка для глубокого LLM-анализа
     if uploaded_file is not None and job_description:
