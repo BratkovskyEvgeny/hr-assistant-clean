@@ -1,5 +1,3 @@
-import re
-
 import PyPDF2
 import requests
 import streamlit as st
@@ -8,30 +6,115 @@ from docx import Document
 
 def extract_skills(text):
     """Извлекает навыки из текста"""
-    # Разбиваем текст на слова
-    words = re.findall(r"\b\w+\b", text.lower())
-
-    # Фильтруем короткие слова и стоп-слова
-    stop_words = {
-        # Общие стоп-слова
-        "и",
-        "в",
-        "во",
-        "не",
-        "что",
-        "с",
-        "со",
-        "как",
-        "а",
-        "то",
-        "все",
-        # ... остальные стоп-слова ...
+    # Список технических навыков и фраз
+    tech_skills = {
+        "python",
+        "numpy",
+        "pandas",
+        "matplotlib",
+        "seaborn",
+        "plotly",
+        "docker",
+        "chromadb",
+        "langchain",
+        "llm",
+        "data",
+        "scientist",
+        "sql",
+        "postgresql",
+        "clickhouse",
+        "greenplum",
+        "mariadb",
+        "hadoop",
+        "hive",
+        "spark",
+        "kafka",
+        "nifi",
+        "hdfs",
+        "aws",
+        "git",
+        "jira",
+        "confluence",
+        "grafana",
+        "redis",
+        "django",
+        "flask",
+        "fastapi",
+        "rest",
+        "soap",
+        "api",
+        "scikit-learn",
+        "pytorch",
+        "tensorflow",
+        "keras",
+        "devops",
+        "ci/cd",
+        "jenkins",
+        "kubernetes",
+        "agile",
+        "scrum",
+        "kanban",
+        "power bi",
+        "tableau",
+        "superset",
+        "datalens",
+        "machine learning",
+        "deep learning",
+        "nlp",
+        "computer vision",
+        "data engineering",
+        "data analysis",
+        "data science",
+        "business intelligence",
+        "etl",
+        "data warehouse",
+        "big data",
+        "cloud computing",
+        "microservices",
     }
 
-    # Фильтруем слова
-    skills = {word for word in words if len(word) > 2 and word not in stop_words}
+    # Список общих навыков и фраз
+    soft_skills = {
+        "коммуникация",
+        "лидерство",
+        "управление",
+        "аналитика",
+        "решение проблем",
+        "критическое мышление",
+        "креативность",
+        "адаптивность",
+        "работа в команде",
+        "самообучение",
+        "тайм-менеджмент",
+        "стрессоустойчивость",
+        "организация",
+        "планирование",
+        "документирование",
+        "презентация",
+        "менторство",
+        "координация",
+        "делегирование",
+    }
 
-    return skills
+    # Приводим текст к нижнему регистру
+    text = text.lower()
+
+    # Находим технические навыки
+    found_tech_skills = set()
+    for skill in tech_skills:
+        if skill in text:
+            found_tech_skills.add(skill)
+
+    # Находим общие навыки
+    found_soft_skills = set()
+    for skill in soft_skills:
+        if skill in text:
+            found_soft_skills.add(skill)
+
+    # Объединяем все найденные навыки
+    all_skills = found_tech_skills | found_soft_skills
+
+    return all_skills
 
 
 def extract_text_from_file(file):
@@ -121,46 +204,77 @@ def analyze_skills(job_description, resume_text):
         )
 
         # Группируем навыки по категориям
-        missing_tech = {
-            skill
-            for skill in missing_skills
-            if skill
-            in {
-                "python",
-                "numpy",
-                "pandas",
-                "matplotlib",
-                "seaborn",
-                "plotly",
-                "docker",
-                "chromadb",
-                "langchain",
-                "llm",
-                "data",
-                "scientist",
-            }
+        tech_skills = {
+            "python",
+            "numpy",
+            "pandas",
+            "matplotlib",
+            "seaborn",
+            "plotly",
+            "docker",
+            "chromadb",
+            "langchain",
+            "llm",
+            "data",
+            "scientist",
+            "sql",
+            "postgresql",
+            "clickhouse",
+            "greenplum",
+            "mariadb",
+            "hadoop",
+            "hive",
+            "spark",
+            "kafka",
+            "nifi",
+            "hdfs",
+            "aws",
+            "git",
+            "jira",
+            "confluence",
+            "grafana",
+            "redis",
+            "django",
+            "flask",
+            "fastapi",
+            "rest",
+            "soap",
+            "api",
+            "scikit-learn",
+            "pytorch",
+            "tensorflow",
+            "keras",
+            "devops",
+            "ci/cd",
+            "jenkins",
+            "kubernetes",
+            "agile",
+            "scrum",
+            "kanban",
+            "power bi",
+            "tableau",
+            "superset",
+            "datalens",
+            "machine learning",
+            "deep learning",
+            "nlp",
+            "computer vision",
+            "data engineering",
+            "data analysis",
+            "data science",
+            "business intelligence",
+            "etl",
+            "data warehouse",
+            "big data",
+            "cloud computing",
+            "microservices",
         }
+
+        # Разделяем навыки на технические и общие
+        missing_tech = {skill for skill in missing_skills if skill in tech_skills}
         missing_other = missing_skills - missing_tech
 
-        extra_tech = {
-            skill
-            for skill in extra_skills
-            if skill
-            in {
-                "python",
-                "numpy",
-                "pandas",
-                "matplotlib",
-                "seaborn",
-                "plotly",
-                "docker",
-                "chromadb",
-                "langchain",
-                "llm",
-                "data",
-                "scientist",
-            }
-        }
+        extra_tech = {skill for skill in extra_skills if skill in tech_skills}
         extra_other = extra_skills - extra_tech
 
         return {
