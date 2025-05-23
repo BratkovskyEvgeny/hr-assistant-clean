@@ -1,10 +1,26 @@
 import base64
 import json
+import logging
+import os
+from datetime import datetime
 
 import PyPDF2
 import requests
 import streamlit as st
 from docx import Document
+
+# Настраиваем логирование
+log_dir = "logs"
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+log_file = os.path.join(log_dir, f"api_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(log_file, encoding="utf-8"), logging.StreamHandler()],
+)
+logger = logging.getLogger(__name__)
 
 
 def extract_skills(text):
@@ -239,61 +255,49 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         auth_bytes = auth.encode("ascii")
         base64_auth = base64.b64encode(auth_bytes).decode("ascii")
 
-        # Подробное логирование запроса
-        st.write("=== ДЕТАЛИ ЗАПРОСА ===")
-        st.write("1. URL запроса:")
-        st.code(api_url, language="text")
-
-        st.write("2. Payload запроса:")
-        st.code(json.dumps(payload, indent=2, ensure_ascii=False), language="json")
-
-        st.write("3. Заголовки запроса:")
+        # Логируем детали запроса
+        logger.info("=== ДЕТАЛИ ЗАПРОСА ===")
+        logger.info(f"URL запроса: {api_url}")
+        logger.info(
+            f"Payload запроса: {json.dumps(payload, indent=2, ensure_ascii=False)}"
+        )
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Basic {base64_auth}",
             "Accept": "application/json",
         }
-        st.code(
-            json.dumps(
-                {k: v if k != "Authorization" else "***" for k, v in headers.items()},
-                indent=2,
-            ),
-            language="json",
+        logger.info(
+            f"Заголовки запроса: {json.dumps({k: v if k != 'Authorization' else '***' for k, v in headers.items()}, indent=2)}"
         )
 
         # Отправляем запрос
         try:
-            st.write("4. Отправка запроса...")
+            logger.info("Отправка запроса...")
             response = requests.post(
                 api_url, json=payload, headers=headers, timeout=30, verify=True
             )
-            st.write("Запрос отправлен успешно")
+            logger.info("Запрос отправлен успешно")
         except requests.exceptions.SSLError as e:
-            st.error(f"Ошибка SSL: {str(e)}")
+            logger.error(f"Ошибка SSL: {str(e)}")
             raise Exception("Ошибка SSL при подключении к API")
         except requests.exceptions.ConnectionError as e:
-            st.error(f"Ошибка подключения: {str(e)}")
+            logger.error(f"Ошибка подключения: {str(e)}")
             raise Exception("Не удалось подключиться к API")
         except requests.exceptions.Timeout as e:
-            st.error(f"Таймаут: {str(e)}")
+            logger.error(f"Таймаут: {str(e)}")
             raise Exception("Превышено время ожидания ответа от API")
 
-        # Подробное логирование ответа
-        st.write("=== ДЕТАЛИ ОТВЕТА ===")
-        st.write("1. Статус код:")
-        st.code(str(response.status_code), language="text")
-
-        st.write("2. Заголовки ответа:")
-        st.code(json.dumps(dict(response.headers), indent=2), language="json")
-
-        st.write("3. Тело ответа:")
+        # Логируем детали ответа
+        logger.info("=== ДЕТАЛИ ОТВЕТА ===")
+        logger.info(f"Статус код: {response.status_code}")
+        logger.info(f"Заголовки ответа: {json.dumps(dict(response.headers), indent=2)}")
         try:
             response_json = response.json()
-            st.code(
-                json.dumps(response_json, indent=2, ensure_ascii=False), language="json"
+            logger.info(
+                f"Тело ответа: {json.dumps(response_json, indent=2, ensure_ascii=False)}"
             )
         except:
-            st.code(response.text, language="text")
+            logger.info(f"Тело ответа: {response.text}")
 
         # Проверяем статус ответа
         if response.status_code == 200:
@@ -307,11 +311,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                     return result["text"]
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
-                    st.error(f"Неожиданный формат ответа: {result}")
+                    logger.error(f"Неожиданный формат ответа: {result}")
                     raise Exception(f"Ошибка в ответе API: {error_msg}")
             except json.JSONDecodeError as e:
-                st.error(f"Ошибка при разборе JSON: {str(e)}")
-                st.error(f"Полученный текст: {response.text}")
+                logger.error(f"Ошибка при разборе JSON: {str(e)}")
+                logger.error(f"Полученный текст: {response.text}")
                 raise Exception("Неверный формат ответа от API")
         else:
             error_msg = f"Ошибка API: {response.status_code}"
@@ -320,11 +324,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 error_msg += f" - {error_details}"
             except:
                 error_msg += f" - {response.text}"
-            st.error(f"Ошибка API: {error_msg}")
+            logger.error(f"Ошибка API: {error_msg}")
             raise Exception(error_msg)
 
     except Exception as e:
-        st.error(f"Ошибка при генерации текста: {str(e)}")
+        logger.error(f"Ошибка при генерации текста: {str(e)}")
         raise
 
 
