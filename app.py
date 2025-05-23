@@ -383,7 +383,7 @@ if uploaded_file is not None and job_description:
 
     # Кнопка для глубокого LLM-анализа
     if uploaded_file is not None and job_description:
-        if st.button("Глубокий LLM-анализ (GPT-2)"):
+        if st.button("Глубокий LLM-анализ (DistilGPT-2)"):
             with st.spinner("Анализируем с помощью LLM..."):
                 prompt = f"""
 Описание вакансии:
@@ -398,5 +398,5 @@ if uploaded_file is not None and job_description:
 3. Какие рекомендации по улучшению резюме?
 """
                 result = query_llm(prompt)
-                st.markdown("### 📝 Результаты LLM-анализа (GPT-2)")
+                st.markdown("### 📝 Результаты LLM-анализа (DistilGPT-2)")
                 st.write(result)

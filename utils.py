@@ -29,7 +29,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 model = None
 
 # API URL для Hugging Face
-API_URL = "https://api-inference.huggingface.co/models/gpt2"
+API_URL = "https://api-inference.huggingface.co/models/distilgpt2"
 HEADERS = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
@@ -579,6 +579,13 @@ def query_llm(prompt):
 
 Analysis:"""
 
+        # Проверяем доступность модели
+        health_check = requests.get(API_URL, headers=HEADERS)
+        if health_check.status_code == 503:
+            return (
+                "Модель загружается. Пожалуйста, подождите немного и попробуйте снова."
+            )
+
         # Отправляем запрос к API
         response = requests.post(
             API_URL,
@@ -590,6 +597,7 @@ Analysis:"""
                     "temperature": 0.7,
                     "top_p": 0.95,
                     "do_sample": True,
+                    "return_full_text": False,
                 },
             },
             timeout=30,  # Таймаут 30 секунд
