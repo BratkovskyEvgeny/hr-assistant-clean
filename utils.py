@@ -35,7 +35,7 @@ def get_llm_pipeline():
     try:
         with st.spinner("Загрузка LLM модели..."):
             # Загружаем модель и токенизатор
-            model_name = "facebook/opt-350m"
+            model_name = "mistralai/Mistral-7B-Instruct-v0.3"
             tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
                 use_auth_token=os.environ.get("HF_TOKEN"),
@@ -45,6 +45,8 @@ def get_llm_pipeline():
                 model_name,
                 use_auth_token=os.environ.get("HF_TOKEN"),
                 cache_dir=CACHE_DIR,
+                device_map="auto",
+                torch_dtype="auto",
             )
 
             # Создаем pipeline
@@ -569,15 +571,15 @@ def query_llm(prompt):
             return "Не удалось загрузить модель. Пожалуйста, попробуйте позже."
 
         # Форматируем промпт
-        formatted_prompt = f"""HR Analysis:
+        formatted_prompt = f"""<s>[INST] HR Analysis:
 {prompt}
 
-Analysis:"""
+Analysis: [/INST]"""
 
         # Генерируем ответ
         result = generator(
             formatted_prompt,
-            max_length=100,
+            max_length=300,  # Увеличиваем для более подробного анализа
             num_return_sequences=1,
             temperature=0.7,
             top_p=0.95,
