@@ -1,4 +1,5 @@
 import base64
+import json
 
 import PyPDF2
 import requests
@@ -240,38 +241,61 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         st.write("Отправляем запрос к API...")
         st.write(f"URL: {api_url}")
         st.write(f"Payload: {payload}")
+        st.write(
+            "Headers: {'Content-Type': 'application/json', 'Authorization': 'Basic ***'}"
+        )
 
         # Отправляем запрос
-        response = requests.post(
-            api_url,
-            json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Basic {base64_auth}",
-            },
-            timeout=30,
-        )
+        try:
+            response = requests.post(
+                api_url,
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Basic {base64_auth}",
+                },
+                timeout=30,
+                verify=True,  # Проверяем SSL сертификат
+            )
+        except requests.exceptions.SSLError as e:
+            st.error(f"Ошибка SSL: {str(e)}")
+            raise Exception("Ошибка SSL при подключении к API")
+        except requests.exceptions.ConnectionError as e:
+            st.error(f"Ошибка подключения: {str(e)}")
+            raise Exception("Не удалось подключиться к API")
+        except requests.exceptions.Timeout as e:
+            st.error(f"Таймаут: {str(e)}")
+            raise Exception("Превышено время ожидания ответа от API")
 
         # Логируем ответ
         st.write(f"Статус ответа: {response.status_code}")
+        st.write(f"Заголовки ответа: {dict(response.headers)}")
         st.write(f"Текст ответа: {response.text}")
 
         # Проверяем статус ответа
         if response.status_code == 200:
-            result = response.json()
-            if result.get("status") == "success" and "text" in result:
-                return result["text"]
-            else:
-                raise Exception(f"Неверный формат ответа от API: {result}")
+            try:
+                result = response.json()
+                if result.get("status") == "success" and "text" in result:
+                    return result["text"]
+                else:
+                    error_msg = result.get("message", "Неизвестная ошибка")
+                    raise Exception(f"Ошибка в ответе API: {error_msg}")
+            except json.JSONDecodeError as e:
+                st.error(f"Ошибка при разборе JSON: {str(e)}")
+                raise Exception("Неверный формат ответа от API")
         else:
-            raise Exception(f"Ошибка API: {response.status_code} - {response.text}")
+            error_msg = f"Ошибка API: {response.status_code}"
+            try:
+                error_details = response.json()
+                error_msg += f" - {error_details}"
+            except:
+                error_msg += f" - {response.text}"
+            raise Exception(error_msg)
 
-    except requests.exceptions.Timeout:
-        raise Exception("Превышено время ожидания ответа от API")
-    except requests.exceptions.ConnectionError:
-        raise Exception("Ошибка подключения к API")
     except Exception as e:
-        raise Exception(f"Ошибка при генерации текста: {str(e)}")
+        st.error(f"Ошибка при генерации текста: {str(e)}")
+        raise
 
 
 @st.cache_data
