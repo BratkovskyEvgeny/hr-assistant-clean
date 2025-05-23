@@ -29,7 +29,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 model = None
 
 # URL для API Hugging Face
-API_URL = "https://api-inference.huggingface.co/models/facebook/opt-1.3b"
+API_URL = "https://api-inference.huggingface.co/models/gpt2"
 headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
@@ -575,14 +575,14 @@ Analysis:"""
             json={
                 "inputs": formatted_prompt,
                 "parameters": {
-                    "max_new_tokens": 300,
+                    "max_new_tokens": 200,  # Уменьшаем для ускорения
                     "temperature": 0.7,
                     "top_p": 0.95,
                     "return_full_text": False,
                     "do_sample": True,
                 },
             },
-            timeout=30,  # Добавляем таймаут
+            timeout=20,  # Уменьшаем таймаут
         )
 
         if response.status_code == 200:
