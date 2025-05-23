@@ -28,7 +28,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 # Инициализация модели для многоязычного анализа
 model = None
 
-API_URL = "https://api-inference.huggingface.co/models/gpt2"
+API_URL = "https://api-inference.huggingface.co/models/distilgpt2"
 headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
@@ -572,6 +572,12 @@ def get_detailed_analysis(job_description, resume_text):
 def query_llm(prompt):
     """Отправляет запрос к LLM модели"""
     try:
+        # Проверяем доступность модели
+        health_check = requests.get(API_URL, headers=headers)
+        if health_check.status_code != 200:
+            st.error(f"Модель недоступна: {health_check.status_code}")
+            return "Модель временно недоступна. Пожалуйста, попробуйте позже."
+
         # Добавляем префикс для лучшего форматирования ответа
         formatted_prompt = f"""HR Analysis:
 {prompt}
