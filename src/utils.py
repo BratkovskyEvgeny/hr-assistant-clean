@@ -217,22 +217,27 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
     Генерирует текст с помощью Kaggle API
     """
     try:
-        # Получаем URL из конфигурации
+        # Получаем URL и учетные данные из конфигурации
         api_url = st.secrets["api"]["kaggle_url"]
+        username = st.secrets["kaggle"]["username"]
+        key = st.secrets["kaggle"]["key"]
 
         # Подготавливаем данные для запроса
         payload = {
             "prompt": prompt,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "stop": None,  # Добавляем параметр stop
+            "stop": None,
         }
 
         # Отправляем запрос
         response = requests.post(
             api_url,
             json=payload,
-            headers={"Content-Type": "application/json"},  # Добавляем заголовок
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Basic {username}:{key}",
+            },
             timeout=30,
         )
 
