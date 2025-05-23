@@ -1,14 +1,8 @@
 import streamlit as st
 
-from utils import analyze_skills, extract_text_from_file, query_llm
+from utils import analyze_skills, extract_text_from_file, generate_text
 
-# Настройка страницы
-st.set_page_config(
-    page_title="🤖 HR Assistant",
-    page_icon="📝",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+st.set_page_config(page_title="🤖 HR Assistant", page_icon="🤖", layout="wide")
 
 # Стили для красивого отображения
 st.markdown(
@@ -195,111 +189,119 @@ st.markdown(
         animation: fadeIn 0.5s ease-out forwards;
         transition: all 0.3s ease;
     }
-    
-    .stFileUploader>div:hover {
-        border-color: #FF4B4B;
-        transform: translateY(-2px);
-    }
-    
-    /* Стили для разделителей */
-    hr {
-        border-color: #3E3E3E;
-        margin: 2rem 0;
-        opacity: 0;
-        animation: fadeIn 0.5s ease-out forwards;
-    }
-    
-    /* Анимация для заголовка */
-    .header-animation {
-        opacity: 0;
-        animation: fadeIn 1s ease-out forwards;
-    }
-    
-    .header-animation h1 {
-        animation: pulse 2s infinite;
-    }
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
-# Заголовок
-st.markdown(
-    """
-    <div class='header-animation' style='text-align: center; margin-bottom: 3rem;'>
-        <h1 style='font-size: 2.5rem; margin-bottom: 1rem;'>
-            🤖 HR Assistant
-        </h1>
-        <p style='color: #9CA3AF; font-size: 1.2rem;'>
-            Оценка соответствия резюме требованиям вакансии
-        </p>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
+# Заголовок приложения
+st.title("🤖 HR Assistant")
+st.markdown("### Анализ резюме и рекомендации")
+
+# Боковая панель с инструкциями
+with st.sidebar:
+    st.markdown("### 📝 Инструкции")
+    st.markdown("""
+    1. Введите описание вакансии
+    2. Загрузите резюме (PDF или DOCX)
+    3. Нажмите кнопку "Анализировать"
+    4. Получите результаты анализа и рекомендации
+    """)
 
 # Основной контент
-st.markdown("### 📋 Описание вакансии")
 job_description = st.text_area(
-    "Введите описание вакансии",
+    "Описание вакансии",
     height=200,
-    help="Опишите требования к вакансии, необходимые навыки и опыт",
-    placeholder="Вставьте текст описания вакансии здесь...",
+    placeholder="Введите описание вакансии здесь...",
 )
 
-st.markdown("### 📄 Загрузка резюме")
 uploaded_file = st.file_uploader(
-    "Загрузите резюме (PDF или DOCX)",
+    "Загрузите резюме",
     type=["pdf", "docx"],
-    help="Поддерживаются файлы в форматах PDF и DOCX",
+    help="Поддерживаются файлы PDF и DOCX",
 )
 
-if uploaded_file is not None and job_description:
-    # Показываем прогресс анализа
-    with st.spinner("Подготовка к анализу..."):
-        # Извлекаем текст из резюме
-        resume_text = extract_text_from_file(uploaded_file)
-        st.success("✅ Текст из резюме успешно извлечен")
+if uploaded_file and job_description:
+    # Извлекаем текст из резюме
+    resume_text = extract_text_from_file(uploaded_file)
 
-    # Анализируем соответствие
-    if job_description and resume_text:
-        with st.spinner("Анализируем соответствие..."):
-            # Анализ навыков
-            skills_analysis = analyze_skills(job_description, resume_text)
+    if resume_text:
+        # Анализируем навыки
+        skills_analysis = analyze_skills(job_description, resume_text)
 
-            # Выводим результаты
-            st.write("### 📊 Результаты анализа")
+        # Отображаем результаты анализа
+        st.markdown("### 📊 Результаты анализа")
 
-            # Схожесть навыков
-            st.write(f"#### Схожесть навыков: {skills_analysis['similarity']:.1%}")
+        # Метрики
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Соответствие навыков", f"{skills_analysis['similarity']:.0%}")
+        with col2:
+            st.metric("Отсутствующие навыки", len(skills_analysis["missing_tech"]))
+        with col3:
+            st.metric("Дополнительные навыки", len(skills_analysis["extra_tech"]))
 
-            # Отсутствующие навыки
-            if skills_analysis["missing_tech"]:
-                st.write("#### 🔴 Отсутствующие технологии:")
-                for skill in sorted(skills_analysis["missing_tech"]):
-                    st.write(f"- {skill}")
+        # Детальный анализ
+        st.markdown("#### 🔍 Детальный анализ")
 
-            # Дополнительные навыки
-            if skills_analysis["extra_tech"]:
-                st.write("#### 🟢 Дополнительные технологии:")
-                for skill in sorted(skills_analysis["extra_tech"]):
-                    st.write(f"- {skill}")
+        # Отсутствующие навыки
+        if skills_analysis["missing_tech"]:
+            st.markdown("##### ❌ Отсутствующие технические навыки")
+            for skill in skills_analysis["missing_tech"]:
+                st.markdown(
+                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
+                )
 
-        # Кнопка для глубокого LLM-анализа
-        if st.button("Глубокий LLM-анализ (DistilGPT-2)"):
-            with st.spinner("Анализируем с помощью LLM..."):
-                prompt = f"""
-Описание вакансии:
-{job_description}
+        if skills_analysis["missing_other"]:
+            st.markdown("##### ❌ Отсутствующие другие навыки")
+            for skill in skills_analysis["missing_other"]:
+                st.markdown(
+                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
+                )
 
-Текст резюме:
-{resume_text}
+        # Дополнительные навыки
+        if skills_analysis["extra_tech"]:
+            st.markdown("##### ✅ Дополнительные технические навыки")
+            for skill in skills_analysis["extra_tech"]:
+                st.markdown(
+                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
+                )
 
-Проанализируй:
-1. Какие требования вакансии не отражены в резюме?
-2. Какие сильные стороны есть у кандидата?
-3. Какие рекомендации по улучшению резюме?
-"""
-                result = query_llm(prompt)
-                st.markdown("### 📝 Результаты LLM-анализа (DistilGPT-2)")
-                st.write(result)
+        if skills_analysis["extra_other"]:
+            st.markdown("##### ✅ Дополнительные другие навыки")
+            for skill in skills_analysis["extra_other"]:
+                st.markdown(
+                    f'<div class="skill-item">{skill}</div>', unsafe_allow_html=True
+                )
+
+        # Генерация рекомендаций
+        st.markdown("### 💡 Рекомендации")
+
+        try:
+            # Формируем промпт для генерации рекомендаций
+            prompt = f"""
+            На основе анализа резюме и описания вакансии, предоставь рекомендации по улучшению резюме.
+            
+            Описание вакансии:
+            {job_description}
+            
+            Анализ навыков:
+            - Отсутствующие технические навыки: {', '.join(skills_analysis['missing_tech'])}
+            - Отсутствующие другие навыки: {', '.join(skills_analysis['missing_other'])}
+            - Дополнительные технические навыки: {', '.join(skills_analysis['extra_tech'])}
+            - Дополнительные другие навыки: {', '.join(skills_analysis['extra_other'])}
+            
+            Предоставь конкретные рекомендации по:
+            1. Как подчеркнуть имеющиеся навыки
+            2. Какие навыки стоит развить
+            3. Как лучше представить опыт
+            """
+
+            with st.spinner("Генерируем рекомендации..."):
+                recommendations = generate_text(prompt)
+                st.markdown(recommendations)
+
+        except Exception as e:
+            st.error(f"Ошибка при генерации рекомендаций: {str(e)}")
+    else:
+        st.error("Не удалось извлечь текст из файла")
