@@ -227,9 +227,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подготавливаем данные для запроса
         payload = {
-            "prompt": prompt,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            "input": {
+                "prompt": prompt,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
         }
 
         # Формируем заголовки авторизации
@@ -253,6 +255,7 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Basic {base64_auth}",
+                    "Accept": "application/json",
                 },
                 timeout=30,
                 verify=True,  # Проверяем SSL сертификат
@@ -276,8 +279,10 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         if response.status_code == 200:
             try:
                 result = response.json()
-                if result.get("status") == "success" and "text" in result:
-                    return result["text"]
+                if "output" in result and "text" in result["output"]:
+                    return result["output"]["text"]
+                elif "generated_text" in result:
+                    return result["generated_text"]
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
                     raise Exception(f"Ошибка в ответе API: {error_msg}")
