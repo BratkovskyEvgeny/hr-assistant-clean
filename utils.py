@@ -35,7 +35,7 @@ def get_llm_pipeline():
     try:
         with st.spinner("Загрузка LLM модели..."):
             # Загружаем модель и токенизатор
-            model_name = "mistralai/Mistral-7B-Instruct-v0.3"
+            model_name = "meta-llama/Llama-2-7b-chat-hf"
             tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
                 use_auth_token=os.environ.get("HF_TOKEN"),
@@ -571,7 +571,11 @@ def query_llm(prompt):
             return "Не удалось загрузить модель. Пожалуйста, попробуйте позже."
 
         # Форматируем промпт
-        formatted_prompt = f"""<s>[INST] HR Analysis:
+        formatted_prompt = f"""<s>[INST] <<SYS>>
+You are a helpful HR assistant that analyzes resumes and job descriptions.
+<</SYS>>
+
+HR Analysis:
 {prompt}
 
 Analysis: [/INST]"""
