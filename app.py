@@ -321,9 +321,7 @@ if st.button("🔍 Анализировать", type="primary"):
             key = st.secrets["kaggle"]["key"]
 
             # Подготавливаем данные для запроса
-            payload = {
-                "input": {"prompt": prompt, "max_tokens": 1000, "temperature": 0.7}
-            }
+            payload = {"prompt": prompt, "max_tokens": 1000, "temperature": 0.7}
 
             # Формируем заголовки авторизации
             auth = f"{username}:{key}"
