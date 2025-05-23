@@ -240,27 +240,30 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         auth_bytes = auth.encode("ascii")
         base64_auth = base64.b64encode(auth_bytes).decode("ascii")
 
-        # Логируем запрос (без учетных данных)
-        st.write("Отправляем запрос к API...")
-        st.write(f"URL: {api_url}")
-        st.write(f"Payload: {payload}")
-        st.write(
-            "Headers: {'Content-Type': 'application/json', 'Authorization': 'Basic ***'}"
-        )
+        # Подробное логирование запроса
+        st.write("=== ДЕТАЛИ ЗАПРОСА ===")
+        st.write(f"URL запроса: {api_url}")
+        st.write("Payload запроса:")
+        st.json(payload)
+        st.write("Заголовки запроса:")
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {base64_auth}",
+            "Accept": "application/json",
+        }
+        st.json({k: v if k != "Authorization" else "***" for k, v in headers.items()})
 
         # Отправляем запрос
         try:
+            st.write("Отправка запроса...")
             response = requests.post(
                 api_url,
                 json=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Basic {base64_auth}",
-                    "Accept": "application/json",
-                },
+                headers=headers,
                 timeout=30,
                 verify=True,  # Проверяем SSL сертификат
             )
+            st.write("Запрос отправлен успешно")
         except requests.exceptions.SSLError as e:
             st.error(f"Ошибка SSL: {str(e)}")
             raise Exception("Ошибка SSL при подключении к API")
@@ -271,10 +274,17 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             st.error(f"Таймаут: {str(e)}")
             raise Exception("Превышено время ожидания ответа от API")
 
-        # Логируем ответ
-        st.write(f"Статус ответа: {response.status_code}")
-        st.write(f"Заголовки ответа: {dict(response.headers)}")
-        st.write(f"Текст ответа: {response.text}")
+        # Подробное логирование ответа
+        st.write("=== ДЕТАЛИ ОТВЕТА ===")
+        st.write(f"Статус код: {response.status_code}")
+        st.write("Заголовки ответа:")
+        st.json(dict(response.headers))
+        st.write("Тело ответа:")
+        try:
+            response_json = response.json()
+            st.json(response_json)
+        except:
+            st.write(response.text)
 
         # Проверяем статус ответа
         if response.status_code == 200:
@@ -288,9 +298,11 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                     return result["text"]
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
+                    st.error(f"Неожиданный формат ответа: {result}")
                     raise Exception(f"Ошибка в ответе API: {error_msg}")
             except json.JSONDecodeError as e:
                 st.error(f"Ошибка при разборе JSON: {str(e)}")
+                st.error(f"Полученный текст: {response.text}")
                 raise Exception("Неверный формат ответа от API")
         else:
             error_msg = f"Ошибка API: {response.status_code}"
@@ -299,6 +311,7 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
                 error_msg += f" - {error_details}"
             except:
                 error_msg += f" - {response.text}"
+            st.error(f"Ошибка API: {error_msg}")
             raise Exception(error_msg)
 
     except Exception as e:
