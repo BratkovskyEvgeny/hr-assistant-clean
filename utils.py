@@ -37,8 +37,14 @@ def get_llm_pipeline():
             # Загружаем модель и токенизатор
             model_name = "gpt2"
             tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=CACHE_DIR)
+
+            # Загружаем модель с использованием accelerate
             model = AutoModelForCausalLM.from_pretrained(
-                model_name, cache_dir=CACHE_DIR, device_map="auto", torch_dtype="auto"
+                model_name,
+                cache_dir=CACHE_DIR,
+                device_map="auto",
+                torch_dtype="auto",
+                low_cpu_mem_usage=True,
             )
 
             # Создаем pipeline
