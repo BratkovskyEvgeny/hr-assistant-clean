@@ -383,7 +383,7 @@ if uploaded_file is not None and job_description:
 
     # Кнопка для глубокого LLM-анализа
     if uploaded_file is not None and job_description:
-        if st.button("Глубокий LLM-анализ (OPT-350M)"):
+        if st.button("Глубокий LLM-анализ (GPT-2)"):
             with st.spinner("Анализируем с помощью LLM..."):
                 prompt = f"""
 Ты — HR-ассистент. Вот описание вакансии:
@@ -398,5 +398,5 @@ if uploaded_file is not None and job_description:
 Ответь структурировано.
 """
                 result = query_llm(prompt)
-                st.markdown("### 📝 Результаты LLM-анализа (OPT-350M)")
+                st.markdown("### 📝 Результаты LLM-анализа (GPT-2)")
                 st.write(result)
