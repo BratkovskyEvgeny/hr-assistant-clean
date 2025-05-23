@@ -110,6 +110,12 @@ TECH_SKILLS = {
         "scala",
         "r",
         "matlab",
+        "python3",
+        "java script",
+        "type script",
+        "c plus plus",
+        "c sharp",
+        "golang",
     },
     # Фреймворки и библиотеки
     "frameworks": {
@@ -120,16 +126,19 @@ TECH_SKILLS = {
         "laravel",
         "express",
         "asp.net",
+        "asp net",
         "rails",
         "react",
         "angular",
         "vue",
         "node.js",
+        "node js",
         "tensorflow",
         "pytorch",
         "pandas",
         "numpy",
         "scikit-learn",
+        "scikit learn",
         "keras",
         "spark",
         "hadoop",
@@ -137,8 +146,18 @@ TECH_SKILLS = {
         "chromadb",
         "transformers",
         "huggingface",
+        "hugging face",
         "streamlit",
         "gradio",
+        "bootstrap",
+        "jquery",
+        "redux",
+        "vue.js",
+        "vue js",
+        "next.js",
+        "next js",
+        "nuxt.js",
+        "nuxt js",
     },
     # Базы данных
     "databases": {
@@ -146,24 +165,33 @@ TECH_SKILLS = {
         "nosql",
         "mongodb",
         "postgresql",
+        "postgres",
         "mysql",
         "oracle",
         "redis",
         "elasticsearch",
+        "elastic search",
         "cassandra",
         "neo4j",
         "dynamodb",
+        "dynamo db",
         "pinecone",
         "weaviate",
         "qdrant",
+        "mssql",
+        "ms sql",
+        "sqlite",
+        "sql server",
     },
     # DevOps и инструменты
     "devops": {
         "docker",
         "kubernetes",
+        "k8s",
         "aws",
         "azure",
         "gcp",
+        "google cloud",
         "linux",
         "unix",
         "git",
@@ -175,6 +203,14 @@ TECH_SKILLS = {
         "terraform",
         "prometheus",
         "grafana",
+        "ci/cd",
+        "cicd",
+        "continuous integration",
+        "continuous deployment",
+        "github",
+        "bitbucket",
+        "svn",
+        "mercurial",
     },
     # Методологии
     "methodologies": {
@@ -184,6 +220,17 @@ TECH_SKILLS = {
         "waterfall",
         "devops",
         "ci/cd",
+        "cicd",
+        "continuous integration",
+        "continuous deployment",
+        "tdd",
+        "test driven development",
+        "bdd",
+        "behavior driven development",
+        "xp",
+        "extreme programming",
+        "lean",
+        "six sigma",
     },
     # AI/ML инструменты
     "ai_ml": {
@@ -191,13 +238,26 @@ TECH_SKILLS = {
         "chromadb",
         "transformers",
         "huggingface",
+        "hugging face",
         "pinecone",
         "weaviate",
         "qdrant",
         "tensorflow",
         "pytorch",
         "scikit-learn",
+        "scikit learn",
         "keras",
+        "opencv",
+        "open cv",
+        "nltk",
+        "spacy",
+        "gensim",
+        "fastai",
+        "fast ai",
+        "xgboost",
+        "lightgbm",
+        "catboost",
+        "pytorch lightning",
     },
 }
 
@@ -341,14 +401,24 @@ def extract_skills(text):
         all_tech_keywords.update([kw.lower() for kw in group])
 
     # Добавляем отладочную информацию
-    print(f"Ищем навыки в тексте: {text[:200]}...")
-    print(f"Доступные навыки для поиска: {sorted(all_tech_keywords)}")
+    st.write("### Отладочная информация")
+    st.write(f"Текст для анализа (первые 200 символов): {text[:200]}...")
+    st.write(f"Количество предложений: {len(sentences)}")
+    st.write(f"Количество навыков для поиска: {len(all_tech_keywords)}")
 
+    found_skills = []
     for sentence in sentences:
         for tech in all_tech_keywords:
             if tech in sentence:
                 skills.add(tech)
-                print(f"Найден навык: {tech} в предложении: {sentence}")
+                found_skills.append((tech, sentence))
+
+    if found_skills:
+        st.write("Найденные навыки:")
+        for skill, sentence in found_skills:
+            st.write(f"- {skill} (в предложении: {sentence[:100]}...)")
+    else:
+        st.write("Навыки не найдены")
 
     return skills
 
@@ -424,6 +494,8 @@ def analyze_skills(job_description, resume_text):
             return {
                 "missing_skills": missing_skills,
                 "missing_experience": missing_experience,
+                "job_skills": job_skills,
+                "resume_skills": resume_skills,
             }
 
         # Получаем эмбеддинги для всех обязанностей сразу
@@ -446,11 +518,6 @@ def analyze_skills(job_description, resume_text):
             if max_similarity < 0.5:
                 missing_experience.append(job_resp)
 
-        # Добавляем отладочную информацию
-        print(f"Навыки в вакансии: {job_skills}")
-        print(f"Навыки в резюме: {resume_skills}")
-        print(f"Отсутствующие навыки: {missing_skills}")
-
         return {
             "missing_skills": missing_skills,
             "missing_experience": missing_experience,
@@ -459,7 +526,7 @@ def analyze_skills(job_description, resume_text):
         }
 
     except Exception as e:
-        print(f"Ошибка при анализе навыков: {str(e)}")
+        st.error(f"Ошибка при анализе навыков: {str(e)}")
         return {
             "missing_skills": set(),
             "missing_experience": [],
