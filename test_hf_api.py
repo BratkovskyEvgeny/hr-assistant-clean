@@ -9,7 +9,7 @@ load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 # URL модели
-API_URL = "https://api-inference.huggingface.co/models/facebook/opt-350m"
+API_URL = "https://api-inference.huggingface.co/models/gpt2"
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 
@@ -32,7 +32,7 @@ def test_model_access():
             json={
                 "inputs": "Hello! How are you?",
                 "parameters": {
-                    "max_new_tokens": 100,
+                    "max_length": 100,
                     "temperature": 0.7,
                     "top_p": 0.95,
                     "return_full_text": False,

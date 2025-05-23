@@ -13,7 +13,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 model = None
 
 # API URL для Hugging Face
-API_URL = "https://api-inference.huggingface.co/models/facebook/opt-350m"
+API_URL = "https://api-inference.huggingface.co/models/gpt2"
 HEADERS = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN')}"}
 
 
@@ -656,7 +656,7 @@ def query_llm(prompt):
             json={
                 "inputs": prompt,
                 "parameters": {
-                    "max_new_tokens": 500,
+                    "max_length": 500,
                     "temperature": 0.7,
                     "top_p": 0.95,
                     "return_full_text": False,
