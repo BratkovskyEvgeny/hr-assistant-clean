@@ -289,42 +289,37 @@ if uploaded_file is not None and job_description:
             delta_color="normal" if similarity_score >= 50 else "inverse",
         )
 
-        # Отображаем найденные навыки
-        job_skills = analysis_results.get("job_skills", set())
-        resume_skills = analysis_results.get("resume_skills", set())
+        # Отображаем схожесть стеков
+        stack_similarity = analysis_results.get("similarity", 0.0)
+        st.metric(
+            "Схожесть технологического стека",
+            f"{stack_similarity:.1%}",
+            delta=f"{stack_similarity - 0.5:.1%}",
+            delta_color="normal" if stack_similarity >= 0.5 else "inverse",
+        )
+
+        # Отображаем отсутствующие и лишние навыки
         missing_skills = analysis_results.get("missing_skills", set())
-        missing_experience = analysis_results.get("missing_experience", [])
+        extra_skills = analysis_results.get("extra_skills", set())
 
-        # Создаем колонки для отображения навыков
-        col1, col2 = st.columns(2)
+        if missing_skills or extra_skills:
+            col1, col2 = st.columns(2)
 
-        with col1:
-            st.subheader("Навыки в вакансии")
-            if job_skills:
-                for skill in sorted(job_skills):
-                    st.write(f"- {skill}")
-            else:
-                st.info("Навыки не найдены в описании вакансии")
+            with col1:
+                if missing_skills:
+                    st.warning("**Отсутствующие технологии:**")
+                    for skill in sorted(missing_skills):
+                        st.write(f"- {skill}")
+                else:
+                    st.success("**Все требуемые технологии присутствуют в резюме**")
 
-        with col2:
-            st.subheader("Навыки в резюме")
-            if resume_skills:
-                for skill in sorted(resume_skills):
-                    st.write(f"- {skill}")
-            else:
-                st.info("Навыки не найдены в резюме")
-
-        # Отображаем отсутствующие навыки и опыт
-        if missing_skills or missing_experience:
-            st.warning("**Отсутствующие навыки и опыт:**")
-            if missing_skills:
-                st.write("**Отсутствующие навыки:**")
-                for skill in sorted(missing_skills):
-                    st.write(f"- {skill}")
-            if missing_experience:
-                st.write("**Отсутствующий опыт:**")
-                for exp in missing_experience:
-                    st.write(f"- {exp}")
+            with col2:
+                if extra_skills:
+                    st.info("**Дополнительные технологии в резюме:**")
+                    for skill in sorted(extra_skills):
+                        st.write(f"- {skill}")
+                else:
+                    st.info("**Нет дополнительных технологий в резюме**")
 
         # Создаем вкладки для разных типов анализа
         tab1, tab2, tab3 = st.tabs(["Опыт работы", "Образование", "Навыки"])

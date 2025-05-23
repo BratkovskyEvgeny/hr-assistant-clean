@@ -71,16 +71,6 @@ def get_model() -> SentenceTransformer:
     """Получает модель с кэшированием"""
     try:
         with st.spinner("Загрузка модели для анализа текста..."):
-            # Проверяем наличие кэшированной модели
-            if os.path.exists(CACHE_DIR):
-                return SentenceTransformer(
-                    "paraphrase-multilingual-MiniLM-L12-v2",
-                    cache_folder=CACHE_DIR,
-                    use_auth_token=True,
-                )
-
-            # Если кэша нет, создаем директорию и загружаем модель
-            os.makedirs(CACHE_DIR, exist_ok=True)
             return SentenceTransformer(
                 "paraphrase-multilingual-MiniLM-L12-v2",
                 cache_folder=CACHE_DIR,
@@ -471,67 +461,121 @@ def extract_responsibilities(text):
     return responsibilities
 
 
+def extract_stack_from_text(text):
+    """Извлекает стек технологий из текста"""
+    # Разбиваем текст на предложения
+    sentences = sent_tokenize(text.lower())
+
+    # Ищем упоминания стека
+    stack_indicators = [
+        "стек",
+        "stack",
+        "технологии",
+        "technologies",
+        "инструменты",
+        "tools",
+        "используем",
+        "используем:",
+        "используем:",
+        "используем:",
+        "работаем с",
+        "работаем с:",
+        "работаем с:",
+        "работаем с:",
+        "требования",
+        "requirements",
+        "требования:",
+        "requirements:",
+        "навыки",
+        "skills",
+        "навыки:",
+        "skills:",
+    ]
+
+    stack_sentences = []
+    for sentence in sentences:
+        if any(indicator in sentence for indicator in stack_indicators):
+            stack_sentences.append(sentence)
+
+    # Если не нашли явных указаний на стек, берем все предложения
+    if not stack_sentences:
+        stack_sentences = sentences
+
+    # Объединяем все предложения со стеком
+    stack_text = " ".join(stack_sentences)
+
+    # Разбиваем на слова и очищаем
+    words = word_tokenize(stack_text)
+    words = [w for w in words if len(w) > 2]  # Убираем короткие слова
+
+    return stack_text, words
+
+
 @st.cache_data
 def analyze_skills(job_description, resume_text):
-    """Анализирует отсутствующие навыки и опыт"""
+    """Анализирует соответствие стека технологий"""
     try:
-        # Извлекаем навыки из описания вакансии и резюме
-        job_skills = extract_skills(job_description)
-        resume_skills = extract_skills(resume_text)
+        # Извлекаем стек из описания вакансии и резюме
+        job_stack_text, job_words = extract_stack_from_text(job_description)
+        resume_stack_text, resume_words = extract_stack_from_text(resume_text)
 
-        # Извлекаем обязанности
-        job_responsibilities = extract_responsibilities(job_description)
-        resume_responsibilities = extract_responsibilities(resume_text)
-
-        # Анализируем отсутствующие навыки
-        missing_skills = job_skills - resume_skills
-
-        # Анализируем отсутствующий опыт
-        missing_experience = []
+        # Получаем модель для анализа
         model = get_model()
-
         if model is None:
             return {
-                "missing_skills": missing_skills,
-                "missing_experience": missing_experience,
-                "job_skills": job_skills,
-                "resume_skills": resume_skills,
+                "missing_skills": set(),
+                "missing_experience": [],
+                "job_stack": job_stack_text,
+                "resume_stack": resume_stack_text,
             }
 
-        # Получаем эмбеддинги для всех обязанностей сразу
-        job_embeddings = model.encode(job_responsibilities, show_progress_bar=False)
-        resume_embeddings = model.encode(
-            resume_responsibilities, show_progress_bar=False
-        )
+        # Получаем эмбеддинги для текстов стека
+        job_embedding = model.encode(job_stack_text)
+        resume_embedding = model.encode(resume_stack_text)
 
-        # Проверяем соответствие обязанностей
-        for i, (job_resp, job_emb) in enumerate(
-            zip(job_responsibilities, job_embeddings)
-        ):
-            max_similarity = 0
-            for resume_emb in resume_embeddings:
-                similarity = cosine_similarity(
-                    job_emb.reshape(1, -1), resume_emb.reshape(1, -1)
-                )[0][0]
-                max_similarity = max(max_similarity, similarity)
+        # Вычисляем схожесть стеков
+        similarity = cosine_similarity(
+            job_embedding.reshape(1, -1), resume_embedding.reshape(1, -1)
+        )[0][0]
 
-            if max_similarity < 0.5:
-                missing_experience.append(job_resp)
+        # Находим уникальные слова в каждом стеке
+        job_unique = set(job_words) - set(resume_words)
+        resume_unique = set(resume_words) - set(job_words)
+
+        # Отладочная информация
+        st.write("### Отладочная информация")
+        st.write("#### Стек из вакансии:")
+        st.write(job_stack_text)
+        st.write("#### Стек из резюме:")
+        st.write(resume_stack_text)
+        st.write(f"#### Схожесть стеков: {similarity:.2%}")
+
+        if job_unique:
+            st.write("#### Уникальные технологии в вакансии:")
+            for tech in sorted(job_unique):
+                st.write(f"- {tech}")
+
+        if resume_unique:
+            st.write("#### Уникальные технологии в резюме:")
+            for tech in sorted(resume_unique):
+                st.write(f"- {tech}")
 
         return {
-            "missing_skills": missing_skills,
-            "missing_experience": missing_experience,
-            "job_skills": job_skills,
-            "resume_skills": resume_skills,
+            "missing_skills": job_unique,
+            "extra_skills": resume_unique,
+            "similarity": similarity,
+            "job_stack": job_stack_text,
+            "resume_stack": resume_stack_text,
         }
 
     except Exception as e:
         st.error(f"Ошибка при анализе навыков: {str(e)}")
         return {
             "missing_skills": set(),
-            "missing_experience": [],
-            "job_skills": set(),
-            "resume_skills": set(),
+            "extra_skills": set(),
+            "similarity": 0.0,
+            "job_stack": "",
+            "resume_stack": "",
         }
 
 
@@ -656,13 +700,11 @@ Analysis:"""
                     "return_full_text": False,
                 },
             },
-            timeout=30,  # Таймаут 30 секунд
+            timeout=30,
         )
 
-        # Проверяем ответ
         if response.status_code == 200:
             result = response.json()[0]["generated_text"]
-            # Очищаем результат от префикса
             result = result.replace(formatted_prompt, "").strip()
             return result
         elif response.status_code == 503:
