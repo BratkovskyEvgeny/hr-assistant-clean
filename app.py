@@ -261,66 +261,31 @@ if uploaded_file is not None and job_description:
         resume_text = extract_text_from_file(uploaded_file)
         st.success("✅ Текст из резюме успешно извлечен")
 
-    with st.spinner("Анализируем соответствие..."):
-        # Анализ навыков
-        skills_analysis = analyze_skills(job_description, resume_text)
+    # Анализируем соответствие
+    if job_description and resume_text:
+        with st.spinner("Анализируем соответствие..."):
+            # Анализ навыков
+            skills_analysis = analyze_skills(job_description, resume_text)
 
-        # Выводим результаты
-        st.write("### 📊 Результаты анализа")
+            # Выводим результаты
+            st.write("### 📊 Результаты анализа")
 
-        # Схожесть навыков
-        st.write(f"#### Схожесть навыков: {skills_analysis['similarity']:.1%}")
+            # Схожесть навыков
+            st.write(f"#### Схожесть навыков: {skills_analysis['similarity']:.1%}")
 
-        # Отсутствующие навыки
-        if skills_analysis["missing_tech"]:
-            st.write("#### 🔴 Отсутствующие технологии:")
-            for skill in sorted(skills_analysis["missing_tech"]):
-                st.write(f"- {skill}")
+            # Отсутствующие навыки
+            if skills_analysis["missing_tech"]:
+                st.write("#### 🔴 Отсутствующие технологии:")
+                for skill in sorted(skills_analysis["missing_tech"]):
+                    st.write(f"- {skill}")
 
-        # Дополнительные навыки
-        if skills_analysis["extra_tech"]:
-            st.write("#### 🟢 Дополнительные технологии:")
-            for skill in sorted(skills_analysis["extra_tech"]):
-                st.write(f"- {skill}")
+            # Дополнительные навыки
+            if skills_analysis["extra_tech"]:
+                st.write("#### 🟢 Дополнительные технологии:")
+                for skill in sorted(skills_analysis["extra_tech"]):
+                    st.write(f"- {skill}")
 
-        # Анализ опыта
-        experience_analysis = analyze_experience(job_description, resume_text)
-
-        # Выводим результаты анализа опыта
-        st.write("#### 📈 Анализ опыта:")
-        st.write(f"- Соответствие опыта: {experience_analysis['experience_match']:.1%}")
-        if experience_analysis["missing_experience"]:
-            st.write("#### 🔴 Отсутствующий опыт:")
-            for exp in experience_analysis["missing_experience"]:
-                st.write(f"- {exp}")
-
-        # Анализ образования
-        education_analysis = analyze_education(job_description, resume_text)
-
-        # Выводим результаты анализа образования
-        st.write("#### 🎓 Анализ образования:")
-        st.write(
-            f"- Соответствие образования: {education_analysis['education_match']:.1%}"
-        )
-        if education_analysis["missing_education"]:
-            st.write("#### 🔴 Отсутствующее образование:")
-            for edu in education_analysis["missing_education"]:
-                st.write(f"- {edu}")
-
-        # Общая оценка
-        st.write("#### 📝 Общая оценка:")
-        st.write(f"- Общее соответствие: {experience_analysis['overall_match']:.1%}")
-
-        # Рекомендации
-        st.write("#### 💡 Рекомендации:")
-        recommendations = generate_recommendations(
-            skills_analysis, experience_analysis, education_analysis
-        )
-        for rec in recommendations:
-            st.write(f"- {rec}")
-
-    # Кнопка для глубокого LLM-анализа
-    if uploaded_file is not None and job_description:
+        # Кнопка для глубокого LLM-анализа
         if st.button("Глубокий LLM-анализ (DistilGPT-2)"):
             with st.spinner("Анализируем с помощью LLM..."):
                 prompt = f"""
