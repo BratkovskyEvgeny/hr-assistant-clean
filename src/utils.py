@@ -218,23 +218,22 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
     """
     try:
         # Получаем URL из конфигурации
-        base_url = st.secrets["api"]["kaggle_url"]
-
-        # Формируем URL для запроса
-        api_url = f"{base_url}/generate"
+        api_url = st.secrets["api"]["kaggle_url"]
 
         # Подготавливаем данные для запроса
         payload = {
             "prompt": prompt,
             "max_tokens": max_tokens,
             "temperature": temperature,
+            "stop": None,  # Добавляем параметр stop
         }
 
         # Отправляем запрос
         response = requests.post(
             api_url,
             json=payload,
-            timeout=30,  # Увеличиваем таймаут до 30 секунд
+            headers={"Content-Type": "application/json"},  # Добавляем заголовок
+            timeout=30,
         )
 
         # Проверяем статус ответа
@@ -243,7 +242,7 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             if "generated_text" in result:
                 return result["generated_text"]
             else:
-                raise Exception("Неверный формат ответа от API")
+                raise Exception(f"Неверный формат ответа от API: {result}")
         else:
             raise Exception(f"Ошибка API: {response.status_code} - {response.text}")
 

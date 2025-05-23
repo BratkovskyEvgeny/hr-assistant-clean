@@ -290,14 +290,18 @@ if uploaded_file and job_description:
             )
             extra = list(skills_analysis["extra_tech"] | skills_analysis["extra_other"])
 
-            prompt = f"""
-            Дай 3 рекомендации по улучшению резюме.
-            Отсутствуют: {', '.join(missing) if missing else 'нет'}
-            Есть дополнительно: {', '.join(extra) if extra else 'нет'}
-            """
+            prompt = f"""Ты - HR-специалист. Проанализируй навыки и дай 3 конкретные рекомендации по улучшению резюме.
+
+Отсутствующие навыки: {', '.join(missing) if missing else 'нет'}
+Дополнительные навыки: {', '.join(extra) if extra else 'нет'}
+
+Формат ответа:
+1. Рекомендация 1
+2. Рекомендация 2
+3. Рекомендация 3"""
 
             with st.spinner("Генерируем рекомендации..."):
-                recommendations = generate_text(prompt)
+                recommendations = generate_text(prompt, max_tokens=500, temperature=0.7)
                 st.markdown(recommendations)
 
         except Exception as e:
