@@ -226,13 +226,9 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подготавливаем данные для запроса
         payload = {
-            "input": {
-                "prompt": prompt,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "model": "gpt-3.5-turbo",
-                "stop": None,
-            }
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
         }
 
         # Формируем заголовки авторизации
@@ -252,7 +248,6 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Basic {base64_auth}",
-                "Accept": "application/json",
             },
             timeout=30,
         )
@@ -264,10 +259,8 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         # Проверяем статус ответа
         if response.status_code == 200:
             result = response.json()
-            if "output" in result and "text" in result["output"]:
-                return result["output"]["text"]
-            elif "generated_text" in result:
-                return result["generated_text"]
+            if result.get("status") == "success" and "text" in result:
+                return result["text"]
             else:
                 raise Exception(f"Неверный формат ответа от API: {result}")
         else:
@@ -379,7 +372,6 @@ def analyze_skills(job_description, resume_text):
             "extra_other": extra_other,
             "similarity": similarity,
         }
-
     except Exception as e:
         st.error(f"Ошибка при анализе навыков: {str(e)}")
         return {
