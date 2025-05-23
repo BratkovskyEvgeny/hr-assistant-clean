@@ -236,105 +236,117 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
     Генерирует текст с помощью Kaggle API
     """
     try:
-        # Получаем URL и учетные данные из конфигурации
-        api_url = st.secrets["api"]["kaggle_url"]
-        username = st.secrets["kaggle"]["username"]
-        key = st.secrets["kaggle"]["key"]
+        # Создаем секцию для логов
+        with st.expander("Логи API запроса", expanded=True):
+            # Получаем URL и учетные данные из конфигурации
+            api_url = st.secrets["api"]["kaggle_url"]
+            username = st.secrets["kaggle"]["username"]
+            key = st.secrets["kaggle"]["key"]
 
-        # Подготавливаем данные для запроса
-        payload = {
-            "input": {
-                "prompt": prompt,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
+            # Подготавливаем данные для запроса
+            payload = {
+                "input": {
+                    "prompt": prompt,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                }
             }
-        }
 
-        # Формируем заголовки авторизации
-        auth = f"{username}:{key}"
-        auth_bytes = auth.encode("ascii")
-        base64_auth = base64.b64encode(auth_bytes).decode("ascii")
+            # Формируем заголовки авторизации
+            auth = f"{username}:{key}"
+            auth_bytes = auth.encode("ascii")
+            base64_auth = base64.b64encode(auth_bytes).decode("ascii")
 
-        # Создаем контейнер для логов
-        log_container = st.empty()
-        log_text = []
+            # Логируем детали запроса
+            st.write("=== ДЕТАЛИ ЗАПРОСА ===")
+            st.write("URL запроса:")
+            st.code(api_url, language="text")
 
-        def log(message):
-            log_text.append(message)
-            log_container.code("\n".join(log_text), language="text")
+            st.write("Payload запроса:")
+            st.code(json.dumps(payload, indent=2, ensure_ascii=False), language="json")
 
-        # Логируем детали запроса
-        log("=== ДЕТАЛИ ЗАПРОСА ===")
-        log(f"URL запроса: {api_url}")
-        log(f"Payload запроса: {json.dumps(payload, indent=2, ensure_ascii=False)}")
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {base64_auth}",
-            "Accept": "application/json",
-        }
-        log(
-            f"Заголовки запроса: {json.dumps({k: v if k != 'Authorization' else '***' for k, v in headers.items()}, indent=2)}"
-        )
-
-        # Отправляем запрос
-        try:
-            log("Отправка запроса...")
-            response = requests.post(
-                api_url, json=payload, headers=headers, timeout=30, verify=True
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Basic {base64_auth}",
+                "Accept": "application/json",
+            }
+            st.write("Заголовки запроса:")
+            st.code(
+                json.dumps(
+                    {
+                        k: v if k != "Authorization" else "***"
+                        for k, v in headers.items()
+                    },
+                    indent=2,
+                ),
+                language="json",
             )
-            log("Запрос отправлен успешно")
-        except requests.exceptions.SSLError as e:
-            log(f"Ошибка SSL: {str(e)}")
-            raise Exception("Ошибка SSL при подключении к API")
-        except requests.exceptions.ConnectionError as e:
-            log(f"Ошибка подключения: {str(e)}")
-            raise Exception("Не удалось подключиться к API")
-        except requests.exceptions.Timeout as e:
-            log(f"Таймаут: {str(e)}")
-            raise Exception("Превышено время ожидания ответа от API")
 
-        # Логируем детали ответа
-        log("=== ДЕТАЛИ ОТВЕТА ===")
-        log(f"Статус код: {response.status_code}")
-        log(f"Заголовки ответа: {json.dumps(dict(response.headers), indent=2)}")
-        try:
-            response_json = response.json()
-            log(
-                f"Тело ответа: {json.dumps(response_json, indent=2, ensure_ascii=False)}"
-            )
-        except:
-            log(f"Тело ответа: {response.text}")
+            # Отправляем запрос
+            try:
+                st.write("Отправка запроса...")
+                response = requests.post(
+                    api_url, json=payload, headers=headers, timeout=30, verify=True
+                )
+                st.write("Запрос отправлен успешно")
+            except requests.exceptions.SSLError as e:
+                st.error(f"Ошибка SSL: {str(e)}")
+                raise Exception("Ошибка SSL при подключении к API")
+            except requests.exceptions.ConnectionError as e:
+                st.error(f"Ошибка подключения: {str(e)}")
+                raise Exception("Не удалось подключиться к API")
+            except requests.exceptions.Timeout as e:
+                st.error(f"Таймаут: {str(e)}")
+                raise Exception("Превышено время ожидания ответа от API")
 
-        # Проверяем статус ответа
-        if response.status_code == 200:
+            # Логируем детали ответа
+            st.write("=== ДЕТАЛИ ОТВЕТА ===")
+            st.write("Статус код:")
+            st.code(str(response.status_code), language="text")
+
+            st.write("Заголовки ответа:")
+            st.code(json.dumps(dict(response.headers), indent=2), language="json")
+
+            st.write("Тело ответа:")
             try:
-                result = response.json()
-                if "output" in result and "text" in result["output"]:
-                    return result["output"]["text"]
-                elif "generated_text" in result:
-                    return result["generated_text"]
-                elif "text" in result:
-                    return result["text"]
-                else:
-                    error_msg = result.get("message", "Неизвестная ошибка")
-                    log(f"Неожиданный формат ответа: {result}")
-                    raise Exception(f"Ошибка в ответе API: {error_msg}")
-            except json.JSONDecodeError as e:
-                log(f"Ошибка при разборе JSON: {str(e)}")
-                log(f"Полученный текст: {response.text}")
-                raise Exception("Неверный формат ответа от API")
-        else:
-            error_msg = f"Ошибка API: {response.status_code}"
-            try:
-                error_details = response.json()
-                error_msg += f" - {error_details}"
+                response_json = response.json()
+                st.code(
+                    json.dumps(response_json, indent=2, ensure_ascii=False),
+                    language="json",
+                )
             except:
-                error_msg += f" - {response.text}"
-            log(f"Ошибка API: {error_msg}")
-            raise Exception(error_msg)
+                st.code(response.text, language="text")
+
+            # Проверяем статус ответа
+            if response.status_code == 200:
+                try:
+                    result = response.json()
+                    if "output" in result and "text" in result["output"]:
+                        return result["output"]["text"]
+                    elif "generated_text" in result:
+                        return result["generated_text"]
+                    elif "text" in result:
+                        return result["text"]
+                    else:
+                        error_msg = result.get("message", "Неизвестная ошибка")
+                        st.error(f"Неожиданный формат ответа: {result}")
+                        raise Exception(f"Ошибка в ответе API: {error_msg}")
+                except json.JSONDecodeError as e:
+                    st.error(f"Ошибка при разборе JSON: {str(e)}")
+                    st.error(f"Полученный текст: {response.text}")
+                    raise Exception("Неверный формат ответа от API")
+            else:
+                error_msg = f"Ошибка API: {response.status_code}"
+                try:
+                    error_details = response.json()
+                    error_msg += f" - {error_details}"
+                except:
+                    error_msg += f" - {response.text}"
+                st.error(f"Ошибка API: {error_msg}")
+                raise Exception(error_msg)
 
     except Exception as e:
-        log(f"Ошибка при генерации текста: {str(e)}")
+        st.error(f"Ошибка при генерации текста: {str(e)}")
         raise
 
 
