@@ -289,10 +289,32 @@ if uploaded_file is not None and job_description:
             delta_color="normal" if similarity_score >= 50 else "inverse",
         )
 
-        # Отображаем отсутствующие навыки и опыт
+        # Отображаем найденные навыки
+        job_skills = analysis_results.get("job_skills", set())
+        resume_skills = analysis_results.get("resume_skills", set())
         missing_skills = analysis_results.get("missing_skills", set())
         missing_experience = analysis_results.get("missing_experience", [])
 
+        # Создаем колонки для отображения навыков
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("Навыки в вакансии")
+            if job_skills:
+                for skill in sorted(job_skills):
+                    st.write(f"- {skill}")
+            else:
+                st.info("Навыки не найдены в описании вакансии")
+
+        with col2:
+            st.subheader("Навыки в резюме")
+            if resume_skills:
+                for skill in sorted(resume_skills):
+                    st.write(f"- {skill}")
+            else:
+                st.info("Навыки не найдены в резюме")
+
+        # Отображаем отсутствующие навыки и опыт
         if missing_skills or missing_experience:
             st.warning("**Отсутствующие навыки и опыт:**")
             if missing_skills:

@@ -334,42 +334,22 @@ def extract_skills(text):
     # Разбиваем текст на предложения
     sentences = sent_tokenize(text.lower())
     skills = set()
-    stop_words = {
-        "опыт",
-        "experience",
-        "работа",
-        "work",
-        "разработка",
-        "development",
-        "создание",
-        "creation",
-        "внедрение",
-        "implementation",
-        "использование",
-        "using",
-        "знание",
-        "knowledge",
-        "умение",
-        "ability",
-        "навык",
-        "skill",
-        "требование",
-        "requirement",
-        "обязанность",
-        "responsibility",
-        "задача",
-        "task",
-        "проект",
-        "project",
-    }
+
     # Собираем все ключевые слова из TECH_SKILLS в один плоский список
     all_tech_keywords = set()
     for group in TECH_SKILLS.values():
         all_tech_keywords.update([kw.lower() for kw in group])
+
+    # Добавляем отладочную информацию
+    print(f"Ищем навыки в тексте: {text[:200]}...")
+    print(f"Доступные навыки для поиска: {sorted(all_tech_keywords)}")
+
     for sentence in sentences:
         for tech in all_tech_keywords:
-            if tech in sentence and tech not in stop_words:
+            if tech in sentence:
                 skills.add(tech)
+                print(f"Найден навык: {tech} в предложении: {sentence}")
+
     return skills
 
 
@@ -466,9 +446,16 @@ def analyze_skills(job_description, resume_text):
             if max_similarity < 0.5:
                 missing_experience.append(job_resp)
 
+        # Добавляем отладочную информацию
+        print(f"Навыки в вакансии: {job_skills}")
+        print(f"Навыки в резюме: {resume_skills}")
+        print(f"Отсутствующие навыки: {missing_skills}")
+
         return {
             "missing_skills": missing_skills,
             "missing_experience": missing_experience,
+            "job_skills": job_skills,
+            "resume_skills": resume_skills,
         }
 
     except Exception as e:
@@ -476,6 +463,8 @@ def analyze_skills(job_description, resume_text):
         return {
             "missing_skills": set(),
             "missing_experience": [],
+            "job_skills": set(),
+            "resume_skills": set(),
         }
 
 
