@@ -284,13 +284,13 @@ def calculate_similarity(text1: str, text2: str) -> float:
         if model is None:
             return 0.0
 
-        # Разбиваем тексты на предложения
-        sentences1 = sent_tokenize(text1)
-        sentences2 = sent_tokenize(text2)
+        # Разбиваем тексты на предложения и берем только первые 10 для ускорения
+        sentences1 = sent_tokenize(text1)[:10]
+        sentences2 = sent_tokenize(text2)[:10]
 
-        # Получаем эмбеддинги
-        embeddings1 = model.encode(sentences1)
-        embeddings2 = model.encode(sentences2)
+        # Получаем эмбеддинги для всех предложений сразу
+        embeddings1 = model.encode(sentences1, show_progress_bar=False)
+        embeddings2 = model.encode(sentences2, show_progress_bar=False)
 
         # Вычисляем косинусное сходство
         similarity = np.mean(
@@ -306,7 +306,6 @@ def calculate_similarity(text1: str, text2: str) -> float:
             ]
         )
 
-        # Преобразуем в проценты
         return float(similarity * 100)
     except Exception as e:
         print(f"Ошибка при вычислении схожести: {str(e)}")
@@ -370,26 +369,35 @@ def extract_responsibilities(text):
         return responsibilities
 
     try:
-        for sentence in sentences:
-            # Проверяем, содержит ли предложение ключевые слова обязанностей
-            if any(keyword in sentence for keyword in RESPONSIBILITY_KEYWORDS):
-                # Получаем эмбеддинг предложения
-                sentence_embedding = model.encode(sentence)
+        # Фильтруем предложения по ключевым словам
+        relevant_sentences = [
+            sentence
+            for sentence in sentences
+            if any(keyword in sentence for keyword in RESPONSIBILITY_KEYWORDS)
+        ]
 
-                # Проверяем, не является ли это дубликатом
-                is_duplicate = False
-                for existing_resp in responsibilities:
-                    existing_embedding = model.encode(existing_resp)
-                    similarity = cosine_similarity(
-                        sentence_embedding.reshape(1, -1),
-                        existing_embedding.reshape(1, -1),
-                    )[0][0]
-                    if similarity > 0.8:  # Порог схожести
-                        is_duplicate = True
-                        break
+        if not relevant_sentences:
+            return responsibilities
 
-                if not is_duplicate:
-                    responsibilities.append(sentence)
+        # Получаем эмбеддинги для всех предложений сразу
+        sentence_embeddings = model.encode(relevant_sentences, show_progress_bar=False)
+
+        # Проверяем дубликаты
+        for i, (sentence, embedding) in enumerate(
+            zip(relevant_sentences, sentence_embeddings)
+        ):
+            is_duplicate = False
+            for j in range(i):
+                similarity = cosine_similarity(
+                    embedding.reshape(1, -1), sentence_embeddings[j].reshape(1, -1)
+                )[0][0]
+                if similarity > 0.8:
+                    is_duplicate = True
+                    break
+
+            if not is_duplicate:
+                responsibilities.append(sentence)
+
     except Exception as e:
         print(f"Ошибка при извлечении обязанностей: {str(e)}")
         return responsibilities
@@ -400,50 +408,59 @@ def extract_responsibilities(text):
 @st.cache_data
 def analyze_skills(job_description, resume_text):
     """Анализирует отсутствующие навыки и опыт"""
-    # Извлекаем навыки из описания вакансии и резюме
-    job_skills = extract_skills(job_description)
-    resume_skills = extract_skills(resume_text)
-
-    # Извлекаем обязанности
-    job_responsibilities = extract_responsibilities(job_description)
-    resume_responsibilities = extract_responsibilities(resume_text)
-
-    # Анализируем отсутствующие навыки
-    missing_skills = job_skills - resume_skills
-
-    # Анализируем отсутствующий опыт
-    missing_experience = []
-    model = get_model()
-
-    if model is None:
-        print("Ошибка: модель не была загружена")
-        return {
-            "missing_skills": missing_skills,
-            "missing_experience": missing_experience,
-        }
-
     try:
-        for job_resp in job_responsibilities:
-            job_resp_embedding = model.encode(job_resp)
+        # Извлекаем навыки из описания вакансии и резюме
+        job_skills = extract_skills(job_description)
+        resume_skills = extract_skills(resume_text)
+
+        # Извлекаем обязанности
+        job_responsibilities = extract_responsibilities(job_description)
+        resume_responsibilities = extract_responsibilities(resume_text)
+
+        # Анализируем отсутствующие навыки
+        missing_skills = job_skills - resume_skills
+
+        # Анализируем отсутствующий опыт
+        missing_experience = []
+        model = get_model()
+
+        if model is None:
+            return {
+                "missing_skills": missing_skills,
+                "missing_experience": missing_experience,
+            }
+
+        # Получаем эмбеддинги для всех обязанностей сразу
+        job_embeddings = model.encode(job_responsibilities, show_progress_bar=False)
+        resume_embeddings = model.encode(
+            resume_responsibilities, show_progress_bar=False
+        )
+
+        # Проверяем соответствие обязанностей
+        for i, (job_resp, job_emb) in enumerate(
+            zip(job_responsibilities, job_embeddings)
+        ):
             max_similarity = 0
-            for resume_resp in resume_responsibilities:
-                resume_resp_embedding = model.encode(resume_resp)
+            for resume_emb in resume_embeddings:
                 similarity = cosine_similarity(
-                    job_resp_embedding.reshape(1, -1),
-                    resume_resp_embedding.reshape(1, -1),
+                    job_emb.reshape(1, -1), resume_emb.reshape(1, -1)
                 )[0][0]
                 max_similarity = max(max_similarity, similarity)
 
-            if max_similarity < 0.5:  # Порог схожести
+            if max_similarity < 0.5:
                 missing_experience.append(job_resp)
-    except Exception as e:
-        print(f"Ошибка при анализе опыта: {str(e)}")
+
         return {
             "missing_skills": missing_skills,
             "missing_experience": missing_experience,
         }
 
-    return {"missing_skills": missing_skills, "missing_experience": missing_experience}
+    except Exception as e:
+        print(f"Ошибка при анализе навыков: {str(e)}")
+        return {
+            "missing_skills": set(),
+            "missing_experience": [],
+        }
 
 
 @st.cache_data
