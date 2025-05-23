@@ -227,11 +227,12 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
 
         # Подготавливаем данные для запроса
         payload = {
+            "inputs": prompt,
             "parameters": {
-                "prompt": prompt,
-                "max_tokens": max_tokens,
+                "max_new_tokens": max_tokens,
                 "temperature": temperature,
-            }
+                "return_full_text": False,
+            },
         }
 
         # Формируем заголовки авторизации
@@ -289,20 +290,13 @@ def generate_text(prompt, max_tokens=1000, temperature=0.7):
         if response.status_code == 200:
             try:
                 result = response.json()
-                if "output" in result and "text" in result["output"]:
-                    return result["output"]["text"]
+                if isinstance(result, list) and len(result) > 0:
+                    # Формат ответа от Hugging Face API
+                    return result[0].get("generated_text", "")
                 elif "generated_text" in result:
                     return result["generated_text"]
                 elif "text" in result:
                     return result["text"]
-                elif "runId" in result:
-                    # Если получили ID запуска, нужно получить результат
-                    run_id = result["runId"]
-                    st.write(f"Получен ID запуска: {run_id}")
-                    # TODO: Добавить логику получения результата по runId
-                    raise Exception(
-                        "Получен ID запуска, но логика получения результата не реализована"
-                    )
                 else:
                     error_msg = result.get("message", "Неизвестная ошибка")
                     st.error(f"Неожиданный формат ответа: {result}")
